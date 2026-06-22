@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Table, Tag, Input, Select, Space, Typography, Row, Col, Button } from 'antd';
 import { SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import { getDevices } from '../api/endpoints';
@@ -8,10 +8,11 @@ import type { Device } from '../types';
 const { Title } = Typography;
 
 export default function DevicesPage() {
+  const [searchParams] = useSearchParams();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(searchParams.get('status') || undefined);
   const [page, setPage] = useState(1);
   const navigate = useNavigate();
 

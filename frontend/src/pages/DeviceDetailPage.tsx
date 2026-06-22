@@ -60,38 +60,33 @@ export default function DeviceDetailPage() {
   const handleVnc = async () => {
     try {
       const { data } = await initiateVnc(deviceId);
-      if (data.command_sent) {
-        Modal.success({
-          title: 'Acesso Remoto VNC',
-          content: (
-            <div>
-              <p><strong>Conecte usando seu viewer VNC:</strong></p>
-              <p style={{ fontSize: 18, fontFamily: 'monospace', margin: '12px 0', padding: 8, background: '#0F1729', borderRadius: 6 }}>
-                {data.connection_string}
-              </p>
-              <p>IP: {data.device_ip} | Porta: {data.vnc_port}</p>
-              <Tag color="green">Comando enviado ao agente</Tag>
+
+      // Try to open VNC viewer directly
+      const vncUrl = `vnc://${data.device_ip}:${data.vnc_port}`;
+      window.open(vncUrl, '_blank');
+
+      Modal.info({
+        title: 'Acesso Remoto VNC',
+        content: (
+          <div>
+            <p>O viewer VNC está sendo aberto automaticamente.</p>
+            <p style={{ marginTop: 12 }}><strong>Se não abrir, conecte manualmente:</strong></p>
+            <div style={{
+              fontSize: 20, fontFamily: 'monospace', margin: '12px 0', padding: 12,
+              background: '#0F1729', borderRadius: 8, textAlign: 'center',
+              border: '1px solid #1E293B', userSelect: 'all', cursor: 'text',
+            }}>
+              {data.connection_string}
             </div>
-          ),
-        });
-      } else {
-        Modal.warning({
-          title: 'Acesso Remoto VNC',
-          content: (
-            <div>
-              <p><strong>Conecte usando seu viewer VNC:</strong></p>
-              <p style={{ fontSize: 18, fontFamily: 'monospace', margin: '12px 0', padding: 8, background: '#0F1729', borderRadius: 6 }}>
-                {data.connection_string}
-              </p>
-              <p>IP: {data.device_ip} | Porta: {data.vnc_port}</p>
-              <Tag color="orange">O agente pode estar offline e não recebeu o comando</Tag>
-              <p style={{ marginTop: 8, color: '#faad14' }}>
-                O dispositivo pode não estar acessível. Verifique se o agente está em execução.
-              </p>
-            </div>
-          ),
-        });
-      }
+            <p style={{ color: '#5B6470', fontSize: 12 }}>
+              Senha VNC: <code>sysid9vnc</code>
+            </p>
+            {data.command_sent
+              ? <Tag color="green" style={{ marginTop: 8 }}>VNC ativado no dispositivo</Tag>
+              : <Tag color="orange" style={{ marginTop: 8 }}>Comando pendente — aguarde até 30s</Tag>}
+          </div>
+        ),
+      });
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Erro ao iniciar VNC');
     }

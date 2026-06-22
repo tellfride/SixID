@@ -92,10 +92,10 @@ export default function DashboardPage() {
   if (loading) return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', marginTop: 100 }} />;
 
   const statCards = [
-    { title: 'Total de Ativos', value: stats?.total_devices || 0, icon: <DesktopOutlined />, color: '#1565FF' },
-    { title: 'Online', value: stats?.online || 0, icon: <CheckCircleOutlined />, color: '#00BFA5' },
-    { title: 'Offline', value: stats?.offline || 0, icon: <CloseCircleOutlined />, color: '#FF4D4F' },
-    { title: 'Alertas', value: stats?.alerts || 0, icon: <WarningOutlined />, color: '#FFB020' },
+    { title: 'Total de Ativos', value: stats?.total_devices || 0, icon: <DesktopOutlined />, color: '#1565FF', onClick: () => navigate('/devices') },
+    { title: 'Online', value: stats?.online || 0, icon: <CheckCircleOutlined />, color: '#00BFA5', onClick: () => navigate('/devices?status=online') },
+    { title: 'Offline', value: stats?.offline || 0, icon: <CloseCircleOutlined />, color: '#FF4D4F', onClick: () => navigate('/devices?status=offline') },
+    { title: 'Alertas', value: stats?.alerts || 0, icon: <WarningOutlined />, color: '#FFB020', onClick: () => navigate('/devices?status=offline') },
   ];
 
   return (
@@ -107,7 +107,11 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]}>
         {statCards.map((s, i) => (
           <Col xs={24} sm={12} lg={6} key={i}>
-            <Card style={{ ...cardStyle, borderTop: `3px solid ${s.color}` }}>
+            <Card
+              style={{ ...cardStyle, borderTop: `3px solid ${s.color}`, cursor: 'pointer', transition: 'all 0.2s' }}
+              hoverable
+              onClick={s.onClick}
+            >
               <Statistic
                 title={<span style={{ color: '#5B6470', fontFamily: "'Poppins', sans-serif" }}>{s.title}</span>}
                 value={s.value}
@@ -183,13 +187,18 @@ export default function DashboardPage() {
       </Row>
 
       <Card title="Últimos Ativos Cadastrados" style={{ ...cardStyle, marginTop: 16 }}
-        styles={{ header: { borderBottom: '1px solid #1E293B', color: '#E6EBF1' } }}>
+        styles={{ header: { borderBottom: '1px solid #1E293B', color: '#E6EBF1' } }}
+        extra={<a onClick={() => navigate('/devices')} style={{ color: '#1565FF' }}>Ver todos</a>}>
         <Table
           dataSource={devices}
           columns={columns}
           rowKey="id"
           pagination={false}
           size="small"
+          onRow={(record) => ({
+            onClick: () => navigate(`/devices/${record.id}`),
+            style: { cursor: 'pointer' },
+          })}
         />
       </Card>
     </div>
