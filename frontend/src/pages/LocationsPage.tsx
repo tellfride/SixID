@@ -83,7 +83,7 @@ export default function LocationsPage() {
   return (
     <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
-        <Title level={3} style={{ color: '#fff', margin: 0 }}>Localizações</Title>
+        <Title level={3} style={{ color: '#E6EBF1', margin: 0 }}>Localizações</Title>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={loadTree}>Atualizar</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
@@ -92,13 +92,13 @@ export default function LocationsPage() {
         </Space>
       </Row>
 
-      <Card style={{ background: '#141414', border: '1px solid #303030' }}>
+      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12 }}>
         {tree.length > 0 ? (
           <Tree
             showIcon
             defaultExpandAll
             treeData={convertToTreeData(tree)}
-            style={{ background: 'transparent', color: '#fff' }}
+            style={{ background: 'transparent', color: '#E6EBF1' }}
           />
         ) : (
           <Text type="secondary">Nenhuma localização cadastrada. Clique em "Adicionar" para começar.</Text>

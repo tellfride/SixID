@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
 * {
   margin: 0;
   padding: 0;
@@ -5,9 +7,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: #0a0a0a;
-  color: #e0e0e0;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0B1220;
+  color: #E6EBF1;
   min-height: 100vh;
 }
 
@@ -21,14 +23,26 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #141414;
+  background: #0B1220;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #1E293B;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #334155;
+}
+
+.ant-card .ant-card-head {
+  border-bottom-color: #1E293B !important;
+}
+
+.ant-table-wrapper .ant-table {
+  background: transparent !important;
+}
+
+.ant-tabs .ant-tabs-tab {
+  font-family: 'Poppins', sans-serif !important;
 }

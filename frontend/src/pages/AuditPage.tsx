@@ -65,9 +65,9 @@ export default function AuditPage() {
 
   return (
     <div>
-      <Title level={3} style={{ color: '#fff', marginBottom: 24 }}>Auditoria</Title>
+      <Title level={3} style={{ color: '#E6EBF1', marginBottom: 24 }}>Auditoria</Title>
 
-      <Card style={{ background: '#141414', border: '1px solid #303030', marginBottom: 16 }}>
+      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12, marginBottom: 16 }}>
         <Row gutter={16}>
           <Col>
             <Select
@@ -82,7 +82,7 @@ export default function AuditPage() {
         </Row>
       </Card>
 
-      <Card style={{ background: '#141414', border: '1px solid #303030' }}>
+      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12 }}>
         <Table
           dataSource={logs}
           columns={columns}

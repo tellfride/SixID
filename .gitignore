@@ -35,3 +35,7 @@ inventory_cache.json
 
 # PyInstaller
 *.manifest
+*.db
+*.db-shm
+*.db-wal
+*.tar.gz

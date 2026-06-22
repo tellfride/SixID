@@ -40,7 +40,7 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     redirect_slashes=False,
-    description="Sistema de Inventário e Monitoramento de Ativos de TI",
+    description="Sistema de Gestão de Ativos e Inventário de TI",
     lifespan=lifespan,
 )
 

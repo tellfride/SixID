@@ -29,37 +29,72 @@ export default function LoginPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)',
+      background: 'linear-gradient(135deg, #0B1220 0%, #0F1B2E 50%, #0B1220 100%)',
     }}>
       <Card
         style={{
-          width: 420,
-          background: '#141414',
-          border: '1px solid #303030',
-          borderRadius: 12,
+          width: 440,
+          background: '#111927',
+          border: '1px solid #1E293B',
+          borderRadius: 16,
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
         }}
-        styles={{ body: { padding: 40 } }}
+        styles={{ body: { padding: 48 } }}
       >
-        <Space direction="vertical" align="center" style={{ width: '100%', marginBottom: 32 }}>
-          <Title level={2} style={{ color: '#1677ff', margin: 0 }}>SysID9</Title>
-          <Text type="secondary">Sistema de Gerenciamento de Ativos</Text>
+        <Space direction="vertical" align="center" style={{ width: '100%', marginBottom: 36 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <svg width={44} height={44} viewBox="0 0 40 40" fill="none">
+              <rect width="40" height="40" rx="8" fill="#1565FF" />
+              <path d="M12 14L20 10L28 14L28 22L20 26L12 22Z" fill="rgba(255,255,255,0.2)" stroke="white" strokeWidth="1.5" />
+              <path d="M20 10V26" stroke="white" strokeWidth="1.5" />
+              <path d="M12 14L20 18L28 14" stroke="white" strokeWidth="1.5" />
+              <path d="M20 18V26" stroke="white" strokeWidth="1.5" />
+              <text x="20" y="22" textAnchor="middle" fill="white" fontSize="10" fontWeight="700" fontFamily="Poppins">6</text>
+            </svg>
+            <Title level={2} style={{ color: '#ffffff', margin: 0, fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}>
+              Sixi<span style={{ color: '#1565FF' }}>D</span>
+            </Title>
+          </div>
+          <Text style={{ color: '#5B6470', fontSize: 13 }}>
+            Sistema de Gestão de Ativos e Inventário de TI
+          </Text>
         </Space>
 
         <Form onFinish={onFinish} layout="vertical" size="large">
           <Form.Item name="username" rules={[{ required: true, message: 'Informe o usuário' }]}>
-            <Input prefix={<UserOutlined />} placeholder="Usuário" />
+            <Input
+              prefix={<UserOutlined style={{ color: '#5B6470' }} />}
+              placeholder="Usuário"
+              style={{ borderRadius: 8, height: 48 }}
+            />
           </Form.Item>
           <Form.Item name="password" rules={[{ required: true, message: 'Informe a senha' }]}>
-            <Input.Password prefix={<LockOutlined />} placeholder="Senha" />
+            <Input.Password
+              prefix={<LockOutlined style={{ color: '#5B6470' }} />}
+              placeholder="Senha"
+              style={{ borderRadius: 8, height: 48 }}
+            />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              block
+              loading={loading}
+              style={{
+                height: 48,
+                borderRadius: 8,
+                fontSize: 15,
+                fontWeight: 600,
+                fontFamily: "'Poppins', sans-serif",
+              }}
+            >
               Entrar
             </Button>
           </Form.Item>
         </Form>
 
-        <Text type="secondary" style={{ display: 'block', textAlign: 'center', fontSize: 12 }}>
+        <Text style={{ display: 'block', textAlign: 'center', fontSize: 12, color: '#5B6470' }}>
           Usuário padrão: admin / admin123
         </Text>
       </Card>

@@ -41,7 +41,7 @@ export default function DevicesPage() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'inventario_sysid9.xlsx';
+    a.download = 'inventario_sixid.xlsx';
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -50,7 +50,7 @@ export default function DevicesPage() {
     {
       title: 'Hostname', dataIndex: 'hostname', key: 'hostname', sorter: true,
       render: (text: string, record: Device) => (
-        <a onClick={() => navigate(`/devices/${record.id}`)} style={{ color: '#1677ff' }}>{text}</a>
+        <a onClick={() => navigate(`/devices/${record.id}`)} style={{ color: '#1565FF' }}>{text}</a>
       ),
     },
     { title: 'Usuário', dataIndex: 'current_user', key: 'current_user' },
@@ -73,9 +73,9 @@ export default function DevicesPage() {
 
   return (
     <div>
-      <Title level={3} style={{ color: '#fff', marginBottom: 24 }}>Dispositivos</Title>
+      <Title level={3} style={{ color: '#E6EBF1', marginBottom: 24 }}>Ativos</Title>
 
-      <Card style={{ background: '#141414', border: '1px solid #303030', marginBottom: 16 }}>
+      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12, marginBottom: 16 }}>
         <Row gutter={16} align="middle">
           <Col flex="auto">
             <Input
@@ -110,7 +110,7 @@ export default function DevicesPage() {
         </Row>
       </Card>
 
-      <Card style={{ background: '#141414', border: '1px solid #303030' }}>
+      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12 }}>
         <Table
           dataSource={devices}
           columns={columns}
