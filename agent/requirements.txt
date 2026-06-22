@@ -1,0 +1,7 @@
+requests==2.32.3
+websocket-client==1.8.0
+apscheduler==3.10.4
+wmi==1.5.1
+pywin32==306
+psutil==6.0.0
+pyinstaller==6.10.0
