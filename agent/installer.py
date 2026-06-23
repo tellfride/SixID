@@ -122,13 +122,12 @@ def install(server_url, api_key, progress_callback=None):
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             config.write(f)
 
-        # 6 — Create scheduled task as SYSTEM
-        #     - Runs at boot (ONSTART) — starts with Windows
-        #     - Runs as SYSTEM — invisible to user, cannot be killed
-        #     - Restart every 5 min if stopped — auto-recovery
+        # 6 — Auto-start: 3 methods for maximum reliability
         log("Configurando inicialização automática...")
         agent_exe = os.path.join(INSTALL_DIR, AGENT_EXE_NAME)
+        autostart_ok = False
 
+        # Method A — Scheduled task ONSTART as SYSTEM
         result = subprocess.run(
             ["schtasks", "/Create",
              "/TN", TASK_NAME,
@@ -140,11 +139,12 @@ def install(server_url, api_key, progress_callback=None):
             capture_output=True, text=True, timeout=15,
         )
         if result.returncode == 0:
-            log("Tarefa agendada criada.")
+            log("Tarefa agendada ONSTART criada.")
+            autostart_ok = True
         else:
-            log(f"Aviso: {result.stderr.strip()}")
+            log(f"Tarefa ONSTART falhou: {result.stderr.strip()}")
 
-        # 7 — Create a watchdog task that restarts agent every 5 min if not running
+        # Method B — Watchdog every 5 min
         watchdog_cmd = (
             f'cmd /c "tasklist /FI \\"IMAGENAME eq {AGENT_EXE_NAME}\\" | '
             f'find /i \\"{AGENT_EXE_NAME}\\" >nul || start /b \\"\\" \\"{agent_exe}\\" --run"'
@@ -160,9 +160,37 @@ def install(server_url, api_key, progress_callback=None):
              "/F"],
             capture_output=True, timeout=15,
         )
-        log("Watchdog de auto-recuperação configurado.")
 
-        # 8 — Registry (Programs & Features)
+        # Method C — Registry Run key (works even without admin for schtasks)
+        try:
+            import winreg
+            key = winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+                0, winreg.KEY_SET_VALUE,
+            )
+            winreg.SetValueEx(key, "SysID9Agent", 0, winreg.REG_SZ, f'"{agent_exe}" --run')
+            winreg.CloseKey(key)
+            log("Registro de auto-start criado (HKLM Run).")
+            autostart_ok = True
+        except Exception:
+            try:
+                key = winreg.OpenKey(
+                    winreg.HKEY_CURRENT_USER,
+                    r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+                    0, winreg.KEY_SET_VALUE,
+                )
+                winreg.SetValueEx(key, "SysID9Agent", 0, winreg.REG_SZ, f'"{agent_exe}" --run')
+                winreg.CloseKey(key)
+                log("Registro de auto-start criado (HKCU Run).")
+                autostart_ok = True
+            except Exception as e:
+                log(f"Registry Run falhou: {e}")
+
+        if not autostart_ok:
+            log("AVISO: Nenhum método de auto-start funcionou. Execute manualmente após reiniciar.")
+
+        # 7 — Registry (Programs & Features)
         log("Registrando no sistema...")
         try:
             import winreg
