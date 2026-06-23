@@ -440,12 +440,12 @@ export default function DeviceDetailPage() {
                 <Popconfirm title="Bloquear teclado e mouse deste dispositivo?" onConfirm={async () => {
                   try { await sendCommand(deviceId, 'block_input', {}); message.success('Teclado e mouse bloqueados'); } catch { message.error('Erro ao bloquear'); }
                 }}>
-                  <Button danger style={{ borderColor: '#7C3AED', color: '#7C3AED' }}>Bloquear Input</Button>
+                  <Button danger style={{ borderColor: '#7C3AED', color: '#7C3AED' }}>Bloquear Teclado e Mouse</Button>
                 </Popconfirm>
                 <Popconfirm title="Desbloquear teclado e mouse?" onConfirm={async () => {
                   try { await sendCommand(deviceId, 'unblock_input', {}); message.success('Teclado e mouse desbloqueados'); } catch { message.error('Erro ao desbloquear'); }
                 }}>
-                  <Button style={{ borderColor: '#00BFA5', color: '#00BFA5' }}>Liberar Input</Button>
+                  <Button style={{ borderColor: '#00BFA5', color: '#00BFA5' }}>Desbloquear Teclado e Mouse</Button>
                 </Popconfirm>
                 {user?.role === 'admin' && (
                   <Popconfirm title="Remover dispositivo?" onConfirm={handleDelete}>
