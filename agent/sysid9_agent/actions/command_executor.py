@@ -2,7 +2,7 @@ import logging
 import subprocess
 
 from sysid9_agent.actions.screen_lock import lock_screen, unlock_screen
-from sysid9_agent.actions.vnc_manager import start_vnc_service, stop_vnc_service
+from sysid9_agent.actions.vnc_manager import start_vnc_service, stop_vnc_service, change_vnc_password
 
 logger = logging.getLogger("SysID9Agent")
 
@@ -23,6 +23,7 @@ def execute_command(command: str, params: dict | None = None) -> dict:
         "list_users": _handle_list_users,
         "disable_user": _handle_disable_user,
         "enable_user": _handle_enable_user,
+        "change_vnc_password": _handle_change_vnc_password,
     }
 
     handler = handlers.get(command)
@@ -210,3 +211,12 @@ def _handle_enable_user(params: dict) -> dict:
 
     logger.info(f"User '{username}' enabled")
     return {"success": True, "result": f"Usuário '{username}' habilitado com sucesso"}
+
+
+def _handle_change_vnc_password(params: dict) -> dict:
+    password = params.get("password", "").strip()
+    if not password:
+        return {"success": False, "result": "Nova senha é obrigatória"}
+    if change_vnc_password(password):
+        return {"success": True, "result": "Senha VNC alterada com sucesso"}
+    return {"success": False, "result": "Falha ao alterar senha VNC"}

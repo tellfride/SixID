@@ -11,7 +11,7 @@ from app.database import get_db
 from app.models.device import Device, DeviceStatus
 from app.models.tracking import RemoteSession, ScreenLock, PendingCommand
 from app.models.user import User, UserRole
-from app.schemas.remote import LockScreenRequest, UnlockScreenRequest, SendCommandRequest, CreateUserRequest, ChangePasswordRequest
+from app.schemas.remote import LockScreenRequest, UnlockScreenRequest, SendCommandRequest, CreateUserRequest, ChangePasswordRequest, ChangeVncPasswordRequest
 from app.services.audit_service import log_action
 from app.utils.security import require_role, hash_password, verify_password
 from app.websocket.manager import manager
@@ -278,6 +278,41 @@ async def batch_change_password(
 
     log_action(db, "batch_change_password", user_id=current_user.id,
                details={"username": data.username, "device_count": len(data.device_ids)},
+               ip_address=request.client.host if request.client else None)
+
+    return {"results": results}
+
+
+@router.post("/batch/change-vnc-password")
+async def batch_change_vnc_password(
+    data: ChangeVncPasswordRequest, request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    results = []
+    for device_id in data.device_ids:
+        device = db.query(Device).filter(Device.id == device_id).first()
+        if not device:
+            results.append({"device_id": device_id, "hostname": "?", "status": "not_found"})
+            continue
+
+        params = {"password": data.password}
+        sent = await _send_command_to_agent(device.agent_id, "change_vnc_password", params)
+
+        if not sent:
+            pending = PendingCommand(device_id=device.id, command="change_vnc_password", params=params)
+            db.add(pending)
+
+        results.append({
+            "device_id": device_id,
+            "hostname": device.hostname,
+            "status": "sent" if sent else "queued",
+        })
+
+    db.commit()
+
+    log_action(db, "batch_change_vnc_password", user_id=current_user.id,
+               details={"device_count": len(data.device_ids)},
                ip_address=request.client.host if request.client else None)
 
     return {"results": results}

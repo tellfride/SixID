@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import {
   UserAddOutlined, KeyOutlined, DesktopOutlined, CheckCircleOutlined,
-  ClockCircleOutlined, CloseCircleOutlined,
+  ClockCircleOutlined, CloseCircleOutlined, EyeOutlined,
 } from '@ant-design/icons';
 import { getDevices } from '../api/endpoints';
 import api from '../api/client';
@@ -34,8 +34,10 @@ export default function UserMgmtPage() {
   const [resultModalOpen, setResultModalOpen] = useState(false);
   const [results, setResults] = useState<BatchResult[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [vncPasswordModalOpen, setVncPasswordModalOpen] = useState(false);
   const [createForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
+  const [vncForm] = Form.useForm();
 
   const loadDevices = async () => {
     setLoading(true);
@@ -107,6 +109,29 @@ export default function UserMgmtPage() {
       message.success(`Comando enviado para ${selectedIds.length} dispositivo(s)`);
     } catch (err: any) {
       message.error(err.response?.data?.detail || 'Erro ao alterar senha');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleChangeVncPassword = async (values: any) => {
+    if (selectedIds.length === 0) {
+      message.warning('Selecione pelo menos um dispositivo');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data } = await api.post('/remote/batch/change-vnc-password', {
+        password: values.password,
+        device_ids: selectedIds,
+      });
+      setResults(data.results);
+      setVncPasswordModalOpen(false);
+      setResultModalOpen(true);
+      vncForm.resetFields();
+      message.success(`Comando enviado para ${selectedIds.length} dispositivo(s)`);
+    } catch (err: any) {
+      message.error(err.response?.data?.detail || 'Erro ao alterar senha VNC');
     } finally {
       setSubmitting(false);
     }
@@ -201,6 +226,14 @@ export default function UserMgmtPage() {
             >
               Alterar Senha
             </Button>
+            <Button
+              icon={<EyeOutlined />}
+              disabled={selectedIds.length === 0}
+              onClick={() => setVncPasswordModalOpen(true)}
+              style={{ borderColor: '#7C3AED', color: '#7C3AED' }}
+            >
+              Senha VNC
+            </Button>
           </Space>
         </Row>
       </Card>
@@ -275,6 +308,30 @@ export default function UserMgmtPage() {
           <Form.Item name="password" label="Nova Senha"
             rules={[{ required: true, message: 'Informe a nova senha' }, { min: 6, message: 'Mínimo 6 caracteres' }]}>
             <Input.Password placeholder="Nova senha" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Change VNC Password Modal */}
+      <Modal
+        title={<Space><EyeOutlined /> Alterar Senha do Acesso Remoto (VNC)</Space>}
+        open={vncPasswordModalOpen}
+        onCancel={() => setVncPasswordModalOpen(false)}
+        onOk={() => vncForm.submit()}
+        okText="Alterar em todos"
+        confirmLoading={submitting}
+        cancelText="Cancelar"
+      >
+        <Alert
+          message={`A senha VNC será alterada em ${selectedIds.length} dispositivo(s)`}
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        <Form form={vncForm} layout="vertical" onFinish={handleChangeVncPassword}>
+          <Form.Item name="password" label="Nova Senha VNC"
+            rules={[{ required: true, message: 'Informe a nova senha' }]}>
+            <Input.Password placeholder="Nova senha para acesso remoto VNC" />
           </Form.Item>
         </Form>
       </Modal>

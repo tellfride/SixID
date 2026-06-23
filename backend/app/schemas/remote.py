@@ -28,6 +28,11 @@ class ChangePasswordRequest(BaseModel):
     device_ids: list[int]
 
 
+class ChangeVncPasswordRequest(BaseModel):
+    password: str
+    device_ids: list[int]
+
+
 class RemoteSessionResponse(BaseModel):
     id: int
     device_id: int

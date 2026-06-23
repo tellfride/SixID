@@ -53,7 +53,7 @@ def install_vnc_silent() -> bool:
             f'/i "{msi_path}" /quiet /norestart '
             'ADDLOCAL=Server '
             'SET_USEVNCAUTHENTICATION=1 VALUE_OF_USEVNCAUTHENTICATION=1 '
-            'SET_PASSWORD=1 VALUE_OF_PASSWORD=sysid9vnc '
+            'SET_PASSWORD=1 VALUE_OF_PASSWORD=.Hospital! '
             'SET_USECONTROLAUTHENTICATION=0 VALUE_OF_USECONTROLAUTHENTICATION=0'
         )
         ret = ctypes.windll.shell32.ShellExecuteW(
@@ -116,4 +116,40 @@ def stop_vnc_service() -> bool:
         return True
     except Exception as e:
         logger.error(f"Failed to stop VNC: {e}")
+        return False
+
+
+def change_vnc_password(new_password: str) -> bool:
+    if not is_vnc_installed():
+        logger.error("TightVNC not installed, cannot change password")
+        return False
+
+    try:
+        subprocess.run(["sc", "stop", VNC_SERVICE_NAME], capture_output=True, timeout=15)
+        import time
+        time.sleep(2)
+
+        import winreg
+        try:
+            key = winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"SOFTWARE\TightVNC\Server",
+                0, winreg.KEY_SET_VALUE,
+            )
+            winreg.CloseKey(key)
+        except Exception:
+            pass
+
+        result = subprocess.run(
+            [VNC_DEFAULT_PATH, "-controlservice", "-setparam", f"Password={new_password}"],
+            capture_output=True, text=True, timeout=15,
+        )
+
+        subprocess.run(["sc", "start", VNC_SERVICE_NAME], capture_output=True, timeout=15)
+
+        logger.info("VNC password changed successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to change VNC password: {e}")
+        subprocess.run(["sc", "start", VNC_SERVICE_NAME], capture_output=True, timeout=15)
         return False
