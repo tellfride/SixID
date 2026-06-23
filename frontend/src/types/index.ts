@@ -111,6 +111,17 @@ export interface ServiceInfo {
   start_type: string | null;
 }
 
+export interface LocalUserInfo {
+  username: string | null;
+  full_name: string | null;
+  is_admin: boolean | null;
+  is_active: boolean | null;
+  source: string | null;
+  domain: string | null;
+  last_logon: string | null;
+  profile_path: string | null;
+}
+
 export interface DeviceDetail extends Device {
   os_info: OSInfo | null;
   cpus: CPUInfo[];
@@ -122,6 +133,7 @@ export interface DeviceDetail extends Device {
   bios: BIOSInfo | null;
   monitors: MonitorInfo[];
   printers: PrinterInfo[];
+  local_users: LocalUserInfo[];
 }
 
 export interface HardwareChange {

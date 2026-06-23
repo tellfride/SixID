@@ -119,6 +119,17 @@ class ServiceInfo(_ORMBase):
     start_type: str | None = None
 
 
+class LocalUserInfo(_ORMBase):
+    username: str | None = None
+    full_name: str | None = None
+    is_admin: bool | None = None
+    is_active: bool | None = None
+    source: str | None = None
+    domain: str | None = None
+    last_logon: str | None = None
+    profile_path: str | None = None
+
+
 class DeviceDetailResponse(DeviceResponse):
     os_info: OSInfo | None = None
     cpus: list[CPUInfo] = []
@@ -130,6 +141,7 @@ class DeviceDetailResponse(DeviceResponse):
     bios: BIOSInfo | None = None
     monitors: list[MonitorInfo] = []
     printers: list[PrinterInfo] = []
+    local_users: list[LocalUserInfo] = []
 
 
 class HardwareChangeResponse(BaseModel):

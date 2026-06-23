@@ -9,7 +9,7 @@ from app.models.device import Device, DeviceStatus
 from app.models.inventory import (
     DeviceOS, DeviceCPU, DeviceRAM, DeviceRAMSlot, DeviceStorage,
     DeviceNetwork, DeviceMotherboard, DeviceBIOS, DeviceMonitor,
-    DevicePrinter, DeviceSoftware, DeviceService,
+    DevicePrinter, DeviceSoftware, DeviceService, DeviceLocalUser,
 )
 from app.models.tracking import HardwareChange
 from app.schemas.agent import AgentInventoryRequest
@@ -131,6 +131,7 @@ def process_inventory(db: Session, data: AgentInventoryRequest):
     _update_list(db, device, "printer", DevicePrinter, data.printers, "printers", "name")
     _update_list(db, device, "software", DeviceSoftware, data.software, "software", "name")
     _update_list(db, device, "service", DeviceService, data.services, "services", "name")
+    _update_list(db, device, "local_user", DeviceLocalUser, data.local_users, "local_users", "username")
 
     db.commit()
     return True

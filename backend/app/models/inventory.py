@@ -176,3 +176,21 @@ class DeviceService(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     device = relationship("Device", back_populates="services")
+
+
+class DeviceLocalUser(Base):
+    __tablename__ = "device_local_users"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), index=True)
+    username: Mapped[str | None] = mapped_column(String(255))
+    full_name: Mapped[str | None] = mapped_column(String(255))
+    is_admin: Mapped[bool | None] = mapped_column(default=False)
+    is_active: Mapped[bool | None] = mapped_column(default=True)
+    source: Mapped[str | None] = mapped_column(String(20))
+    domain: Mapped[str | None] = mapped_column(String(255))
+    last_logon: Mapped[str | None] = mapped_column(String(100))
+    profile_path: Mapped[str | None] = mapped_column(String(500))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    device = relationship("Device", back_populates="local_users")

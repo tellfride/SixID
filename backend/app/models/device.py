@@ -41,6 +41,7 @@ class Device(Base):
     printers: Mapped[list["DevicePrinter"]] = relationship(back_populates="device", cascade="all, delete-orphan")
     software: Mapped[list["DeviceSoftware"]] = relationship(back_populates="device", cascade="all, delete-orphan")
     services: Mapped[list["DeviceService"]] = relationship(back_populates="device", cascade="all, delete-orphan")
+    local_users: Mapped[list["DeviceLocalUser"]] = relationship(back_populates="device", cascade="all, delete-orphan")
     hardware_changes: Mapped[list["HardwareChange"]] = relationship(back_populates="device", cascade="all, delete-orphan")
 
     room: Mapped["Room | None"] = relationship()
@@ -50,7 +51,7 @@ class Device(Base):
 from app.models.inventory import (  # noqa: E402
     DeviceOS, DeviceCPU, DeviceRAM, DeviceRAMSlot, DeviceStorage,
     DeviceNetwork, DeviceMotherboard, DeviceBIOS, DeviceMonitor,
-    DevicePrinter, DeviceSoftware, DeviceService,
+    DevicePrinter, DeviceSoftware, DeviceService, DeviceLocalUser,
 )
 from app.models.tracking import HardwareChange  # noqa: E402
 from app.models.location import Room, ResponsiblePerson  # noqa: E402

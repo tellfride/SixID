@@ -11,7 +11,8 @@ import {
 import { getDevice, getDeviceChanges, getDeviceSoftware, getDeviceServices,
   initiateVnc, lockScreen, unlockScreen, deleteDevice, getRoomsFlat, updateDevice } from '../api/endpoints';
 import { useAuthStore } from '../store/authStore';
-import type { DeviceDetail, HardwareChange, SoftwareInfo, ServiceInfo } from '../types';
+import { UserOutlined, TeamOutlined } from '@ant-design/icons';
+import type { DeviceDetail, HardwareChange, SoftwareInfo, ServiceInfo, LocalUserInfo } from '../types';
 
 const { Title, Text } = Typography;
 
@@ -326,6 +327,32 @@ export default function DeviceDetailPage() {
             { title: 'Status', dataIndex: 'status',
               render: (v: string) => <Tag color={v === 'Running' ? 'green' : v === 'Stopped' ? 'red' : 'default'}>{v}</Tag> },
             { title: 'Tipo de Início', dataIndex: 'start_type' },
+          ]} />
+      ),
+    },
+    {
+      key: 'users',
+      label: <span><TeamOutlined /> Usuários ({device.local_users?.length || 0})</span>,
+      children: (
+        <Table dataSource={device.local_users || []} rowKey="username" size="small"
+          pagination={{ pageSize: 20 }}
+          columns={[
+            { title: 'Usuário', dataIndex: 'username', key: 'username',
+              render: (v: string) => <span><UserOutlined style={{ marginRight: 6 }} />{v}</span> },
+            { title: 'Nome Completo', dataIndex: 'full_name', key: 'full_name',
+              render: (v: string) => v || '-' },
+            { title: 'Admin', dataIndex: 'is_admin', key: 'is_admin', width: 80,
+              render: (v: boolean) => v ? <Tag color="red">Admin</Tag> : <Tag>Não</Tag> },
+            { title: 'Ativo', dataIndex: 'is_active', key: 'is_active', width: 80,
+              render: (v: boolean) => v ? <Tag color="green">Sim</Tag> : <Tag color="default">Não</Tag> },
+            { title: 'Origem', dataIndex: 'source', key: 'source', width: 100,
+              render: (v: string) => v === 'domain' ? <Tag color="blue">Domínio</Tag> : <Tag color="default">Local</Tag> },
+            { title: 'Domínio', dataIndex: 'domain', key: 'domain', width: 150,
+              render: (v: string) => v || '-' },
+            { title: 'Último Logon', dataIndex: 'last_logon', key: 'last_logon', width: 180,
+              render: (v: string) => v || '-' },
+            { title: 'Perfil', dataIndex: 'profile_path', key: 'profile', ellipsis: true,
+              render: (v: string) => v || '-' },
           ]} />
       ),
     },

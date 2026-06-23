@@ -4,7 +4,7 @@ from app.models.device import Device
 from app.models.inventory import (
     DeviceOS, DeviceCPU, DeviceRAM, DeviceRAMSlot, DeviceStorage,
     DeviceNetwork, DeviceMotherboard, DeviceBIOS, DeviceMonitor,
-    DevicePrinter, DeviceSoftware, DeviceService,
+    DevicePrinter, DeviceSoftware, DeviceService, DeviceLocalUser,
 )
 from app.models.tracking import HardwareChange, AuditLog, RemoteSession, ScreenLock, PendingCommand
 
@@ -14,6 +14,6 @@ __all__ = [
     "Device",
     "DeviceOS", "DeviceCPU", "DeviceRAM", "DeviceRAMSlot", "DeviceStorage",
     "DeviceNetwork", "DeviceMotherboard", "DeviceBIOS", "DeviceMonitor",
-    "DevicePrinter", "DeviceSoftware", "DeviceService",
+    "DevicePrinter", "DeviceSoftware", "DeviceService", "DeviceLocalUser",
     "HardwareChange", "AuditLog", "RemoteSession", "ScreenLock", "PendingCommand",
 ]

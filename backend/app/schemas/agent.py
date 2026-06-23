@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from app.schemas.device import (
     OSInfo, CPUInfo, RAMInfo, RAMSlotInfo, StorageInfo, NetworkInfo,
     MotherboardInfo, BIOSInfo, MonitorInfo, PrinterInfo, SoftwareInfo, ServiceInfo,
+    LocalUserInfo,
 )
 
 
@@ -40,6 +41,7 @@ class AgentInventoryRequest(BaseModel):
     printers: list[PrinterInfo] = []
     software: list[SoftwareInfo] = []
     services: list[ServiceInfo] = []
+    local_users: list[LocalUserInfo] = []
 
 
 class AgentCommandResponse(BaseModel):

@@ -187,6 +187,7 @@ def get_device(device_id: int, db: Session = Depends(get_db), _=Depends(get_curr
                   joinedload(Device.bios),
                   joinedload(Device.monitors),
                   joinedload(Device.printers),
+                  joinedload(Device.local_users),
               )
               .filter(Device.id == device_id).first())
     if not device:

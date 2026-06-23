@@ -11,6 +11,7 @@ from sysid9_agent.collectors.printers import PrinterCollector
 from sysid9_agent.collectors.software import SoftwareCollector
 from sysid9_agent.collectors.services import ServiceCollector
 from sysid9_agent.collectors.processes import ProcessCollector
+from sysid9_agent.collectors.users import UserCollector
 
 ALL_COLLECTORS = [
     HostnameCollector,
@@ -26,4 +27,5 @@ ALL_COLLECTORS = [
     SoftwareCollector,
     ServiceCollector,
     ProcessCollector,
+    UserCollector,
 ]
