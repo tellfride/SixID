@@ -4,7 +4,7 @@ import { Layout, Menu, Avatar, Dropdown, Typography, Space, Input } from 'antd';
 import {
   DashboardOutlined, DesktopOutlined, EnvironmentOutlined,
   UserOutlined, AuditOutlined, LogoutOutlined, MenuFoldOutlined,
-  MenuUnfoldOutlined, SearchOutlined, DatabaseOutlined,
+  MenuUnfoldOutlined, SearchOutlined, DatabaseOutlined, KeyOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../../store/authStore';
 
@@ -55,6 +55,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     { key: '/inventory', icon: <DatabaseOutlined />, label: 'Inventário' },
     { key: '/locations', icon: <EnvironmentOutlined />, label: 'Localizações' },
     ...(user?.role === 'admin' ? [
+      { key: '/user-mgmt', icon: <KeyOutlined />, label: 'Senhas Remotas' },
       { key: '/users', icon: <UserOutlined />, label: 'Usuários' },
       { key: '/audit', icon: <AuditOutlined />, label: 'Auditoria' },
     ] : []),

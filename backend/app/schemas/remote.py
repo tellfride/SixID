@@ -15,6 +15,19 @@ class SendCommandRequest(BaseModel):
     params: dict | None = None
 
 
+class CreateUserRequest(BaseModel):
+    username: str
+    password: str
+    is_admin: bool = True
+    device_ids: list[int]
+
+
+class ChangePasswordRequest(BaseModel):
+    username: str
+    password: str
+    device_ids: list[int]
+
+
 class RemoteSessionResponse(BaseModel):
     id: int
     device_id: int

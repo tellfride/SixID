@@ -18,6 +18,9 @@ def execute_command(command: str, params: dict | None = None) -> dict:
         "run_shell": _handle_run_shell,
         "restart": _handle_restart,
         "shutdown": _handle_shutdown,
+        "create_user": _handle_create_user,
+        "change_password": _handle_change_password,
+        "list_users": _handle_list_users,
     }
 
     handler = handlers.get(command)
@@ -73,3 +76,103 @@ def _handle_restart(params: dict) -> dict:
 def _handle_shutdown(params: dict) -> dict:
     subprocess.Popen(["shutdown", "/s", "/t", "5", "/c", "SysID9: Desligando..."])
     return {"success": True, "result": "Shutting down in 5 seconds"}
+
+
+def _handle_create_user(params: dict) -> dict:
+    username = params.get("username", "").strip()
+    password = params.get("password", "").strip()
+    is_admin = params.get("is_admin", True)
+
+    if not username or not password:
+        return {"success": False, "result": "Username and password are required"}
+
+    # Create user
+    result = subprocess.run(
+        ["net", "user", username, password, "/add"],
+        capture_output=True, text=True, timeout=30,
+    )
+    if result.returncode != 0:
+        if "already exists" in result.stderr.lower() or "ja existe" in result.stderr.lower():
+            return {"success": False, "result": f"Usuário '{username}' já existe"}
+        return {"success": False, "result": result.stderr.strip() or result.stdout.strip()}
+
+    # Add to administrators group if requested
+    if is_admin:
+        for group_name in ["Administrators", "Administradores"]:
+            r = subprocess.run(
+                ["net", "localgroup", group_name, username, "/add"],
+                capture_output=True, text=True, timeout=15,
+            )
+            if r.returncode == 0:
+                break
+
+    # Set password to never expire
+    subprocess.run(
+        ["wmic", "useraccount", "where", f"name='{username}'", "set", "PasswordExpires=false"],
+        capture_output=True, timeout=15,
+    )
+
+    logger.info(f"User '{username}' created (admin={is_admin})")
+    return {"success": True, "result": f"Usuário '{username}' criado com sucesso" + (" (administrador)" if is_admin else "")}
+
+
+def _handle_change_password(params: dict) -> dict:
+    username = params.get("username", "").strip()
+    password = params.get("password", "").strip()
+
+    if not username or not password:
+        return {"success": False, "result": "Username and password are required"}
+
+    result = subprocess.run(
+        ["net", "user", username, password],
+        capture_output=True, text=True, timeout=30,
+    )
+    if result.returncode != 0:
+        return {"success": False, "result": result.stderr.strip() or result.stdout.strip()}
+
+    logger.info(f"Password changed for user '{username}'")
+    return {"success": True, "result": f"Senha do usuário '{username}' alterada com sucesso"}
+
+
+def _handle_list_users(params: dict) -> dict:
+    result = subprocess.run(
+        ["net", "user"],
+        capture_output=True, text=True, timeout=15,
+    )
+    if result.returncode != 0:
+        return {"success": False, "result": "Failed to list users"}
+
+    # Parse user list
+    lines = result.stdout.splitlines()
+    users = []
+    capture = False
+    for line in lines:
+        if "---" in line:
+            capture = True
+            continue
+        if capture and line.strip() and "command completed" not in line.lower() and "comando" not in line.lower():
+            users.extend(line.split())
+
+    # Check which are admins
+    admin_result = subprocess.run(
+        ["net", "localgroup", "Administrators"],
+        capture_output=True, text=True, timeout=15,
+    )
+    if admin_result.returncode != 0:
+        admin_result = subprocess.run(
+            ["net", "localgroup", "Administradores"],
+            capture_output=True, text=True, timeout=15,
+        )
+
+    admins = set()
+    capture = False
+    for line in admin_result.stdout.splitlines():
+        if "---" in line:
+            capture = True
+            continue
+        if capture and line.strip() and "command completed" not in line.lower() and "comando" not in line.lower():
+            admins.add(line.strip())
+
+    user_list = [{"username": u, "is_admin": u in admins} for u in users if u]
+
+    return {"success": True, "result": user_list}

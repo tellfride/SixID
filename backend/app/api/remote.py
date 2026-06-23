@@ -11,7 +11,7 @@ from app.database import get_db
 from app.models.device import Device, DeviceStatus
 from app.models.tracking import RemoteSession, ScreenLock, PendingCommand
 from app.models.user import User, UserRole
-from app.schemas.remote import LockScreenRequest, UnlockScreenRequest, SendCommandRequest
+from app.schemas.remote import LockScreenRequest, UnlockScreenRequest, SendCommandRequest, CreateUserRequest, ChangePasswordRequest
 from app.services.audit_service import log_action
 from app.utils.security import require_role, hash_password, verify_password
 from app.websocket.manager import manager
@@ -211,3 +211,73 @@ async def send_command(
         "command": data.command,
         "device": device.hostname,
     }
+
+
+@router.post("/batch/create-user")
+async def batch_create_user(
+    data: CreateUserRequest, request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    results = []
+    for device_id in data.device_ids:
+        device = db.query(Device).filter(Device.id == device_id).first()
+        if not device:
+            results.append({"device_id": device_id, "hostname": "?", "status": "not_found"})
+            continue
+
+        params = {"username": data.username, "password": data.password, "is_admin": data.is_admin}
+        sent = await _send_command_to_agent(device.agent_id, "create_user", params)
+
+        if not sent:
+            pending = PendingCommand(device_id=device.id, command="create_user", params=params)
+            db.add(pending)
+
+        results.append({
+            "device_id": device_id,
+            "hostname": device.hostname,
+            "status": "sent" if sent else "queued",
+        })
+
+    db.commit()
+
+    log_action(db, "batch_create_user", user_id=current_user.id,
+               details={"username": data.username, "is_admin": data.is_admin, "device_count": len(data.device_ids)},
+               ip_address=request.client.host if request.client else None)
+
+    return {"results": results}
+
+
+@router.post("/batch/change-password")
+async def batch_change_password(
+    data: ChangePasswordRequest, request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    results = []
+    for device_id in data.device_ids:
+        device = db.query(Device).filter(Device.id == device_id).first()
+        if not device:
+            results.append({"device_id": device_id, "hostname": "?", "status": "not_found"})
+            continue
+
+        params = {"username": data.username, "password": data.password}
+        sent = await _send_command_to_agent(device.agent_id, "change_password", params)
+
+        if not sent:
+            pending = PendingCommand(device_id=device.id, command="change_password", params=params)
+            db.add(pending)
+
+        results.append({
+            "device_id": device_id,
+            "hostname": device.hostname,
+            "status": "sent" if sent else "queued",
+        })
+
+    db.commit()
+
+    log_action(db, "batch_change_password", user_id=current_user.id,
+               details={"username": data.username, "device_count": len(data.device_ids)},
+               ip_address=request.client.host if request.client else None)
+
+    return {"results": results}

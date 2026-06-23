@@ -11,6 +11,7 @@ import LocationsPage from './pages/LocationsPage';
 import UsersPage from './pages/UsersPage';
 import AuditPage from './pages/AuditPage';
 import InventoryPage from './pages/InventoryPage';
+import UserMgmtPage from './pages/UserMgmtPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuthStore();
@@ -48,6 +49,7 @@ export default function App() {
                 <Route path="/devices/:id" element={<DeviceDetailPage />} />
                 <Route path="/inventory" element={<InventoryPage />} />
                 <Route path="/locations" element={<LocationsPage />} />
+                <Route path="/user-mgmt" element={<AdminRoute><UserMgmtPage /></AdminRoute>} />
                 <Route path="/users" element={<AdminRoute><UsersPage /></AdminRoute>} />
                 <Route path="/audit" element={<AdminRoute><AuditPage /></AdminRoute>} />
               </Routes>
