@@ -110,17 +110,17 @@ export default function DashboardPage() {
 
       <Row gutter={[16, 16]}>
         {statCards.map((s, i) => (
-          <Col xs={24} sm={12} lg={6} key={i}>
+          <Col xs={12} sm={12} md={6} lg={6} xl={6} key={i}>
             <Card
-              style={{ ...cardStyle, borderTop: `3px solid ${s.color}`, cursor: 'pointer', transition: 'all 0.2s' }}
+              style={{ ...cardStyle, borderTop: `3px solid ${s.color}`, cursor: 'pointer', transition: 'all 0.2s', height: '100%' }}
               hoverable
               onClick={s.onClick}
             >
               <Statistic
-                title={<span style={{ color: '#5B6470', fontFamily: "'Poppins', sans-serif" }}>{s.title}</span>}
+                title={<span style={{ color: '#5B6470', fontFamily: "'Poppins', sans-serif", fontSize: 12 }}>{s.title}</span>}
                 value={s.value}
-                prefix={<span style={{ color: s.color }}>{s.icon}</span>}
-                valueStyle={{ color: '#E6EBF1', fontWeight: 700, fontFamily: "'Poppins', sans-serif", fontSize: 28 }}
+                prefix={<span style={{ color: s.color, fontSize: 20 }}>{s.icon}</span>}
+                valueStyle={{ color: '#E6EBF1', fontWeight: 700, fontFamily: "'Poppins', sans-serif", fontSize: 24 }}
               />
             </Card>
           </Col>

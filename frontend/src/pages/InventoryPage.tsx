@@ -30,6 +30,7 @@ interface InventoryDevice extends Device {
   mac_address?: string;
   motherboard?: string;
   bios_info?: string;
+  monitor_info?: string;
   software_count?: number;
   services_count?: number;
 }
@@ -65,11 +66,14 @@ export default function InventoryPage() {
             mac_address: detail.networks?.find((n: any) => n.mac_address)?.mac_address || '-',
             motherboard: detail.motherboard ? `${detail.motherboard.manufacturer || ''} ${detail.motherboard.model || ''}`.trim() : '-',
             bios_info: detail.bios ? `${detail.bios.manufacturer || ''} ${detail.bios.version || ''}`.trim() : '-',
+            monitor_info: detail.monitors?.map((m: any) =>
+              `${m.manufacturer || ''} ${m.model || ''} ${m.serial ? '(S/N: ' + m.serial + ')' : ''}`
+            ).join('; ') || '-',
             software_count: detail.software_count ?? 0,
             services_count: detail.services_count ?? 0,
           });
         } catch {
-          enriched.push({ ...dev, os_name: '-', cpu_model: '-', ram_total: 0, storage_info: '-', ip_address: '-', mac_address: '-', motherboard: '-', bios_info: '-' });
+          enriched.push({ ...dev, os_name: '-', cpu_model: '-', ram_total: 0, storage_info: '-', ip_address: '-', mac_address: '-', motherboard: '-', bios_info: '-', monitor_info: '-' });
         }
       }
       setDevices(enriched);
@@ -122,6 +126,21 @@ export default function InventoryPage() {
     { title: 'RAM (GB)', dataIndex: 'ram_total', key: 'ram', width: 100, render: (v: number) => v ? `${v} GB` : '-' },
     { title: 'Placa-mãe', dataIndex: 'motherboard', key: 'mb', width: 180, ellipsis: true },
     { title: 'BIOS', dataIndex: 'bios_info', key: 'bios', width: 180, ellipsis: true },
+    { title: 'Monitor', dataIndex: 'monitor_info', key: 'monitor', width: 280, ellipsis: true, render: (v: string) => v || '-' },
+    { title: 'Localização', dataIndex: 'location_path', key: 'loc', width: 200, ellipsis: true, render: (v: string) => v || '-' },
+  ];
+
+  const monitorColumns = [
+    {
+      title: 'Hostname', dataIndex: 'hostname', key: 'hostname', fixed: 'left' as const, width: 160,
+      render: (text: string, record: InventoryDevice) => (
+        <a onClick={() => navigate(`/devices/${record.id}`)} style={{ color: '#1565FF', fontWeight: 500 }}>{text}</a>
+      ),
+    },
+    { title: 'Status', dataIndex: 'status', key: 'status', width: 90,
+      render: (s: string) => <Tag color={s === 'online' ? '#00BFA5' : '#FF4D4F'} style={{ borderRadius: 6 }}>{s.toUpperCase()}</Tag>,
+    },
+    { title: 'Monitor', dataIndex: 'monitor_info', key: 'monitor', ellipsis: true, render: (v: string) => v || '-' },
     { title: 'Localização', dataIndex: 'location_path', key: 'loc', width: 200, ellipsis: true, render: (v: string) => v || '-' },
   ];
 
@@ -185,6 +204,16 @@ export default function InventoryPage() {
         />
       ),
     },
+    {
+      key: 'monitors',
+      label: <span><DesktopOutlined /> Monitores</span>,
+      children: (
+        <Table dataSource={devices} columns={monitorColumns} rowKey="id" loading={loading}
+          size="small" pagination={{ pageSize: 25 }}
+          onRow={(record) => ({ onClick: () => navigate(`/devices/${record.id}`), style: { cursor: 'pointer' } })}
+        />
+      ),
+    },
   ];
 
   return (
@@ -201,23 +230,23 @@ export default function InventoryPage() {
 
       {/* Summary cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={8}>
-          <Card style={{ ...cardStyle, borderTop: '3px solid #1565FF' }}>
-            <Statistic title={<span style={{ color: '#5B6470' }}>Total de Ativos</span>}
+        <Col xs={12} sm={8}>
+          <Card style={{ ...cardStyle, borderTop: '3px solid #1565FF', height: '100%' }}>
+            <Statistic title={<span style={{ color: '#5B6470', fontSize: 12 }}>Total de Ativos</span>}
               value={devices.length} prefix={<DesktopOutlined style={{ color: '#1565FF' }} />}
               valueStyle={{ color: '#E6EBF1', fontWeight: 700 }} />
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
-          <Card style={{ ...cardStyle, borderTop: '3px solid #00BFA5' }}>
-            <Statistic title={<span style={{ color: '#5B6470' }}>Online</span>}
+        <Col xs={12} sm={8}>
+          <Card style={{ ...cardStyle, borderTop: '3px solid #00BFA5', height: '100%' }}>
+            <Statistic title={<span style={{ color: '#5B6470', fontSize: 12 }}>Online</span>}
               value={online} prefix={<WifiOutlined style={{ color: '#00BFA5' }} />}
               valueStyle={{ color: '#E6EBF1', fontWeight: 700 }} />
           </Card>
         </Col>
         <Col xs={24} sm={8}>
-          <Card style={{ ...cardStyle, borderTop: '3px solid #FF4D4F' }}>
-            <Statistic title={<span style={{ color: '#5B6470' }}>Offline</span>}
+          <Card style={{ ...cardStyle, borderTop: '3px solid #FF4D4F', height: '100%' }}>
+            <Statistic title={<span style={{ color: '#5B6470', fontSize: 12 }}>Offline</span>}
               value={offline} prefix={<DesktopOutlined style={{ color: '#FF4D4F' }} />}
               valueStyle={{ color: '#E6EBF1', fontWeight: 700 }} />
           </Card>
