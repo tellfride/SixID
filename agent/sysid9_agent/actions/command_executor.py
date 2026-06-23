@@ -27,6 +27,8 @@ def execute_command(command: str, params: dict | None = None) -> dict:
         "change_vnc_password": _handle_change_vnc_password,
         "block_input": _handle_block_input,
         "unblock_input": _handle_unblock_input,
+        "block_usb": _handle_block_usb,
+        "unblock_usb": _handle_unblock_usb,
     }
 
     handler = handlers.get(command)
@@ -241,3 +243,35 @@ def _handle_unblock_input(params: dict) -> dict:
         return {"success": True, "result": "Teclado e mouse desbloqueados"}
     except Exception as e:
         return {"success": False, "result": f"Falha ao desbloquear: {e}"}
+
+
+def _handle_block_usb(params: dict) -> dict:
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SYSTEM\CurrentControlSet\Services\USBSTOR",
+            0, winreg.KEY_SET_VALUE,
+        )
+        winreg.SetValueEx(key, "Start", 0, winreg.REG_DWORD, 4)
+        winreg.CloseKey(key)
+        logger.info("USB storage blocked")
+        return {"success": True, "result": "Portas USB bloqueadas (pendrives e armazenamento)"}
+    except Exception as e:
+        return {"success": False, "result": f"Falha ao bloquear USB: {e}"}
+
+
+def _handle_unblock_usb(params: dict) -> dict:
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SYSTEM\CurrentControlSet\Services\USBSTOR",
+            0, winreg.KEY_SET_VALUE,
+        )
+        winreg.SetValueEx(key, "Start", 0, winreg.REG_DWORD, 3)
+        winreg.CloseKey(key)
+        logger.info("USB storage unblocked")
+        return {"success": True, "result": "Portas USB desbloqueadas"}
+    except Exception as e:
+        return {"success": False, "result": f"Falha ao desbloquear USB: {e}"}

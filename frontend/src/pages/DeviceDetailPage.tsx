@@ -447,6 +447,16 @@ export default function DeviceDetailPage() {
                 }}>
                   <Button style={{ borderColor: '#00BFA5', color: '#00BFA5' }}>Desbloquear Teclado e Mouse</Button>
                 </Popconfirm>
+                <Popconfirm title="Bloquear portas USB (pendrives/armazenamento)?" onConfirm={async () => {
+                  try { await sendCommand(deviceId, 'block_usb', {}); message.success('Portas USB bloqueadas'); } catch { message.error('Erro ao bloquear USB'); }
+                }}>
+                  <Button danger style={{ borderColor: '#FF4D4F', color: '#FF4D4F' }}>Bloquear USB</Button>
+                </Popconfirm>
+                <Popconfirm title="Desbloquear portas USB?" onConfirm={async () => {
+                  try { await sendCommand(deviceId, 'unblock_usb', {}); message.success('Portas USB desbloqueadas'); } catch { message.error('Erro ao desbloquear USB'); }
+                }}>
+                  <Button style={{ borderColor: '#0EA5E9', color: '#0EA5E9' }}>Desbloquear USB</Button>
+                </Popconfirm>
                 {user?.role === 'admin' && (
                   <Popconfirm title="Remover dispositivo?" onConfirm={handleDelete}>
                     <Button icon={<DeleteOutlined />} danger>Remover</Button>
