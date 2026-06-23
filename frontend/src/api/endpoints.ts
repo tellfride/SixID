@@ -52,6 +52,10 @@ export const getAlertHistory = (days = 30) =>
 export const getLocationTree = () =>
   api.get<LocationTreeNode[]>('/locations/tree');
 export const getUnits = () => api.get('/locations/units');
+export const getCompanies = (unitId?: number) => api.get('/locations/companies', { params: unitId ? { unit_id: unitId } : {} });
+export const getBranches = (companyId?: number) => api.get('/locations/branches', { params: companyId ? { company_id: companyId } : {} });
+export const getSectors = (branchId?: number) => api.get('/locations/sectors', { params: branchId ? { branch_id: branchId } : {} });
+export const getRooms = (sectorId?: number) => api.get('/locations/rooms', { params: sectorId ? { sector_id: sectorId } : {} });
 export const createUnit = (data: { name: string; description?: string }) =>
   api.post('/locations/units', data);
 export const deleteUnit = (id: number) => api.delete(`/locations/units/${id}`);
