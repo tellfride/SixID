@@ -59,36 +59,29 @@ export default function DeviceDetailPage() {
 
   const handleVnc = async () => {
     try {
-      const { data } = await initiateVnc(deviceId);
-
-      // Try to open VNC viewer directly
-      const vncUrl = `vnc://${data.device_ip}:${data.vnc_port}`;
-      window.open(vncUrl, '_blank');
-
-      Modal.info({
-        title: 'Acesso Remoto VNC',
-        content: (
-          <div>
-            <p>O viewer VNC está sendo aberto automaticamente.</p>
-            <p style={{ marginTop: 12 }}><strong>Se não abrir, conecte manualmente:</strong></p>
-            <div style={{
-              fontSize: 20, fontFamily: 'monospace', margin: '12px 0', padding: 12,
-              background: '#0F1729', borderRadius: 8, textAlign: 'center',
-              border: '1px solid #1E293B', userSelect: 'all', cursor: 'text',
-            }}>
-              {data.connection_string}
-            </div>
-            <p style={{ color: '#5B6470', fontSize: 12 }}>
-              Senha VNC: <code>sysid9vnc</code>
-            </p>
-            {data.command_sent
-              ? <Tag color="green" style={{ marginTop: 8 }}>VNC ativado no dispositivo</Tag>
-              : <Tag color="orange" style={{ marginTop: 8 }}>Comando pendente — aguarde até 30s</Tag>}
-          </div>
-        ),
+      // Download .vnc file — opens TightVNC Viewer automatically
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`/api/remote/${deviceId}/vnc-file`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+
+      if (!response.ok) {
+        const err = await response.json();
+        message.error(err.detail || 'Erro ao iniciar VNC');
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${device?.hostname || 'remote'}.vnc`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      message.success('Arquivo VNC baixado — abra para conectar ao dispositivo.');
     } catch (err: any) {
-      message.error(err.response?.data?.detail || 'Erro ao iniciar VNC');
+      message.error('Erro ao iniciar acesso remoto');
     }
   };
 

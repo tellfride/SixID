@@ -4,6 +4,7 @@ from datetime import datetime
 from app.config import TIMEZONE_BR
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -78,6 +79,28 @@ async def initiate_vnc(
         "connection_string": f"{ip}:5900",
         "message": f"Conecte ao VNC em {ip}:5900" if sent else "Comando enviado, mas agente pode não ter recebido.",
     }
+
+
+@router.get("/{device_id}/vnc-file")
+async def download_vnc_file(
+    device_id: int, db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TECHNICIAN)),
+):
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
+    ip = _get_device_ip(device)
+    if not ip:
+        raise HTTPException(status_code=400, detail="IP não encontrado")
+
+    await _send_command_to_agent(device.agent_id, "start_vnc")
+
+    vnc_content = f"[Connection]\nHost={ip}\nPort=5900\n[Options]\nFullScreen=0\nViewOnly=0\n"
+    return Response(
+        content=vnc_content,
+        media_type="application/x-vnc",
+        headers={"Content-Disposition": f'attachment; filename="{device.hostname}.vnc"'},
+    )
 
 
 @router.post("/{device_id}/lock")
