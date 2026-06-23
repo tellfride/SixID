@@ -49,27 +49,31 @@ export default function DevicesPage() {
 
   const columns = [
     {
-      title: 'Hostname', dataIndex: 'hostname', key: 'hostname', sorter: true,
+      title: 'Hostname', dataIndex: 'hostname', key: 'hostname', sorter: true, width: 160,
       render: (text: string, record: Device) => (
         <a onClick={() => navigate(`/devices/${record.id}`)} style={{ color: '#1565FF' }}>{text}</a>
       ),
     },
-    { title: 'Usuário', dataIndex: 'current_user', key: 'current_user' },
-    { title: 'Domínio', dataIndex: 'domain', key: 'domain' },
+    { title: 'Usuário', dataIndex: 'current_user', key: 'current_user', width: 120 },
+    { title: 'SO', dataIndex: 'os_name', key: 'os', ellipsis: true, width: 180,
+      render: (v: string) => v || '-' },
+    { title: 'Processador', dataIndex: 'cpu_model', key: 'cpu', ellipsis: true,
+      render: (v: string) => v || '-' },
+    { title: 'RAM', dataIndex: 'ram_total_gb', key: 'ram', width: 80,
+      render: (v: number) => v ? `${v} GB` : '-' },
     {
-      title: 'Status', dataIndex: 'status', key: 'status', width: 100,
+      title: 'Status', dataIndex: 'status', key: 'status', width: 90,
       render: (status: string) => (
         <Tag color={status === 'online' ? 'green' : status === 'offline' ? 'red' : 'default'}>
           {status.toUpperCase()}
         </Tag>
       ),
     },
-    { title: 'Localização', dataIndex: 'location_path', key: 'location', ellipsis: true },
+    { title: 'Localização', dataIndex: 'location_path', key: 'location', ellipsis: true, width: 180 },
     {
-      title: 'Última Comunicação', dataIndex: 'last_seen', key: 'last_seen', width: 180,
+      title: 'Última Comunicação', dataIndex: 'last_seen', key: 'last_seen', width: 170,
       render: (v: string) => v ? new Date(v).toLocaleString('pt-BR') : '-',
     },
-    { title: 'Versão', dataIndex: 'agent_version', key: 'version', width: 80 },
   ];
 
   return (

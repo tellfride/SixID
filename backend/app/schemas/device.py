@@ -18,6 +18,9 @@ class DeviceResponse(BaseModel):
     responsible_person_id: int | None
     created_at: datetime
     location_path: str | None = None
+    os_name: str | None = None
+    cpu_model: str | None = None
+    ram_total_gb: float | None = None
 
     model_config = {"from_attributes": True}
 

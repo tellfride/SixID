@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.device import Device, DeviceStatus
-from app.models.inventory import DeviceOS, DeviceSoftware, DeviceService
+from app.models.inventory import DeviceOS, DeviceCPU, DeviceRAM, DeviceSoftware, DeviceService
 from app.models.tracking import HardwareChange
 from app.models.location import Room, Sector, Branch, Company, Unit
 from app.models.user import User, UserRole
@@ -68,6 +68,15 @@ def list_devices(
     for d in devices:
         resp = DeviceResponse.model_validate(d)
         resp.location_path = _build_location_path(db, d.room_id)
+        os_info = db.query(DeviceOS).filter(DeviceOS.device_id == d.id).first()
+        cpu_info = db.query(DeviceCPU).filter(DeviceCPU.device_id == d.id).first()
+        ram_info = db.query(DeviceRAM).filter(DeviceRAM.device_id == d.id).first()
+        if os_info:
+            resp.os_name = os_info.name
+        if cpu_info:
+            resp.cpu_model = cpu_info.model
+        if ram_info:
+            resp.ram_total_gb = ram_info.total_gb
         result.append(resp)
     return result
 

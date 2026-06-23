@@ -75,8 +75,12 @@ export default function DashboardPage() {
         <a onClick={() => navigate(`/devices/${record.id}`)} style={{ color: '#1565FF', fontWeight: 500 }}>{text}</a>
       ),
     },
-    { title: 'IP', dataIndex: 'current_user', key: 'user' },
-    { title: 'Status', dataIndex: 'status', key: 'status',
+    { title: 'Usuário', dataIndex: 'current_user', key: 'user' },
+    { title: 'Processador', dataIndex: 'cpu_model', key: 'cpu', ellipsis: true,
+      render: (v: string) => v || '-' },
+    { title: 'RAM', dataIndex: 'ram_total_gb', key: 'ram', width: 80,
+      render: (v: number) => v ? `${v} GB` : '-' },
+    { title: 'Status', dataIndex: 'status', key: 'status', width: 90,
       render: (status: string) => (
         <Tag color={status === 'online' ? '#00BFA5' : status === 'offline' ? '#FF4D4F' : '#5B6470'}
           style={{ borderRadius: 6, fontWeight: 500 }}>

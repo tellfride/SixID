@@ -21,6 +21,9 @@ export interface Device {
   responsible_person_id: number | null;
   created_at: string;
   location_path: string | null;
+  os_name: string | null;
+  cpu_model: string | null;
+  ram_total_gb: number | null;
 }
 
 export interface OSInfo {
