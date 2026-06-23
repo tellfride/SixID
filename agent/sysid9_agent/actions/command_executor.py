@@ -1,3 +1,4 @@
+import ctypes
 import logging
 import subprocess
 
@@ -24,6 +25,8 @@ def execute_command(command: str, params: dict | None = None) -> dict:
         "disable_user": _handle_disable_user,
         "enable_user": _handle_enable_user,
         "change_vnc_password": _handle_change_vnc_password,
+        "block_input": _handle_block_input,
+        "unblock_input": _handle_unblock_input,
     }
 
     handler = handlers.get(command)
@@ -220,3 +223,21 @@ def _handle_change_vnc_password(params: dict) -> dict:
     if change_vnc_password(password):
         return {"success": True, "result": "Senha VNC alterada com sucesso"}
     return {"success": False, "result": "Falha ao alterar senha VNC"}
+
+
+def _handle_block_input(params: dict) -> dict:
+    try:
+        ctypes.windll.user32.BlockInput(True)
+        logger.info("Keyboard and mouse blocked")
+        return {"success": True, "result": "Teclado e mouse bloqueados"}
+    except Exception as e:
+        return {"success": False, "result": f"Falha ao bloquear: {e}"}
+
+
+def _handle_unblock_input(params: dict) -> dict:
+    try:
+        ctypes.windll.user32.BlockInput(False)
+        logger.info("Keyboard and mouse unblocked")
+        return {"success": True, "result": "Teclado e mouse desbloqueados"}
+    except Exception as e:
+        return {"success": False, "result": f"Falha ao desbloquear: {e}"}
