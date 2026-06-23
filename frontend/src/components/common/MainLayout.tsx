@@ -145,6 +145,16 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         }}>
           {children}
         </Content>
+        <div style={{
+          textAlign: 'center',
+          padding: '12px 0',
+          borderTop: '1px solid #1E293B',
+          background: '#0B1220',
+        }}>
+          <Text style={{ color: '#5B6470', fontSize: 11 }}>
+            SixiD v1.3.0 - Sistema de Gestao de Ativos e Inventario de TI
+          </Text>
+        </div>
       </Layout>
     </Layout>
   );
