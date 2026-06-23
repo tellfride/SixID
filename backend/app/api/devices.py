@@ -69,7 +69,9 @@ def list_devices(
         resp = DeviceResponse.model_validate(d)
         resp.location_path = _build_location_path(db, d.room_id)
         os_info = db.query(DeviceOS).filter(DeviceOS.device_id == d.id).first()
-        cpu_info = db.query(DeviceCPU).filter(DeviceCPU.device_id == d.id).first()
+        cpu_info = db.query(DeviceCPU).filter(DeviceCPU.device_id == d.id, DeviceCPU.model != None).first()
+        if not cpu_info:
+            cpu_info = db.query(DeviceCPU).filter(DeviceCPU.device_id == d.id).first()
         ram_info = db.query(DeviceRAM).filter(DeviceRAM.device_id == d.id).first()
         if os_info:
             resp.os_name = os_info.name
