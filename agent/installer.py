@@ -1,4 +1,4 @@
-"""
+﻿"""
 SysID9 Host Installer
 Installs the SysID9 agent as an invisible background process.
 """
@@ -73,30 +73,30 @@ def install(server_url, api_key, progress_callback=None):
     server_url = normalize_url(server_url)
 
     try:
-        # 0 — Test connection
-        log(f"Testando conexão com {server_url}...")
+        # 0 â€" Test connection
+        log(f"Testando conexÃ£o com {server_url}...")
         try:
             import urllib.request
             urllib.request.urlopen(server_url + "/api/health", timeout=5)
             log("Servidor encontrado!")
         except Exception:
-            log("AVISO: Servidor não acessível. O agente tentará conectar depois.")
+            log("AVISO: Servidor nÃ£o acessÃ­vel. O agente tentarÃ¡ conectar depois.")
 
-        # 1 — Preserve existing agent_id to avoid duplicates
+        # 1 â€" Preserve existing agent_id to avoid duplicates
         existing_agent_id = _read_existing_agent_id()
         if existing_agent_id:
             log(f"Agente existente encontrado (ID: {existing_agent_id[:8]}...)")
 
-        # 2 — Stop previous
+        # 2 â€" Stop previous
         log("Parando agente anterior...")
         _stop_previous()
 
-        # 3 — Directories
-        log("Criando diretórios...")
+        # 3 â€" Directories
+        log("Criando diretÃ³rios...")
         os.makedirs(INSTALL_DIR, exist_ok=True)
         os.makedirs(CONFIG_DIR, exist_ok=True)
 
-        # 4 — Copy executable
+        # 4 â€" Copy executable
         log("Copiando agente...")
         src = get_exe_path()
         dest = os.path.join(INSTALL_DIR, AGENT_EXE_NAME)
@@ -109,10 +109,10 @@ def install(server_url, api_key, progress_callback=None):
                     subprocess.run(["taskkill", "/F", "/IM", AGENT_EXE_NAME], capture_output=True, timeout=10)
                     time.sleep(2)
             else:
-                raise PermissionError(f"Não foi possível copiar para {dest}.")
+                raise PermissionError(f"NÃ£o foi possÃ­vel copiar para {dest}.")
 
-        # 5 — Write config (preserving agent_id)
-        log("Salvando configuração...")
+        # 5 â€" Write config (preserving agent_id)
+        log("Salvando configuraÃ§Ã£o...")
         config = configparser.ConfigParser()
         config["server"] = {
             "url": server_url,
@@ -122,12 +122,12 @@ def install(server_url, api_key, progress_callback=None):
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             config.write(f)
 
-        # 6 — Auto-start: 3 methods for maximum reliability
-        log("Configurando inicialização automática...")
+        # 6 â€" Auto-start: 3 methods for maximum reliability
+        log("Configurando inicializaÃ§Ã£o automÃ¡tica...")
         agent_exe = os.path.join(INSTALL_DIR, AGENT_EXE_NAME)
         autostart_ok = False
 
-        # Method A — Scheduled task ONSTART as SYSTEM
+        # Method A â€" Scheduled task ONSTART as SYSTEM
         result = subprocess.run(
             ["schtasks", "/Create",
              "/TN", TASK_NAME,
@@ -144,7 +144,7 @@ def install(server_url, api_key, progress_callback=None):
         else:
             log(f"Tarefa ONSTART falhou: {result.stderr.strip()}")
 
-        # Method B — Watchdog every 5 min
+        # Method B â€" Watchdog every 5 min
         watchdog_cmd = (
             f'cmd /c "tasklist /FI \\"IMAGENAME eq {AGENT_EXE_NAME}\\" | '
             f'find /i \\"{AGENT_EXE_NAME}\\" >nul || start /b \\"\\" \\"{agent_exe}\\" --run"'
@@ -161,7 +161,7 @@ def install(server_url, api_key, progress_callback=None):
             capture_output=True, timeout=15,
         )
 
-        # Method C — Registry Run key (works even without admin for schtasks)
+        # Method C â€" Registry Run key (works even without admin for schtasks)
         try:
             import winreg
             key = winreg.OpenKey(
@@ -188,9 +188,9 @@ def install(server_url, api_key, progress_callback=None):
                 log(f"Registry Run falhou: {e}")
 
         if not autostart_ok:
-            log("AVISO: Nenhum método de auto-start funcionou. Execute manualmente após reiniciar.")
+            log("AVISO: Nenhum mÃ©todo de auto-start funcionou. Execute manualmente apÃ³s reiniciar.")
 
-        # 7 — Registry (Programs & Features)
+        # 7 â€" Registry (Programs & Features)
         log("Registrando no sistema...")
         try:
             import winreg
@@ -207,14 +207,32 @@ def install(server_url, api_key, progress_callback=None):
         except Exception:
             pass
 
-        # 9 — Start agent now (invisible, detached)
+        # 9 - Start agent now via schtasks /Run (fully independent)
         log("Iniciando agente...")
-        subprocess.Popen(
-            [agent_exe, "--run"],
-            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
-            close_fds=True,
+        subprocess.run(
+            ["schtasks", "/Delete", "/TN", "SysID9StartNow", "/F"],
+            capture_output=True, timeout=5,
         )
-        time.sleep(3)
+        subprocess.run(
+            ["schtasks", "/Create",
+             "/TN", "SysID9StartNow",
+             "/TR", f'"{agent_exe}" --run',
+             "/SC", "ONCE",
+             "/ST", "00:00",
+             "/RU", "SYSTEM",
+             "/RL", "HIGHEST",
+             "/F"],
+            capture_output=True, timeout=10,
+        )
+        subprocess.run(
+            ["schtasks", "/Run", "/TN", "SysID9StartNow"],
+            capture_output=True, timeout=10,
+        )
+        time.sleep(5)
+        subprocess.run(
+            ["schtasks", "/Delete", "/TN", "SysID9StartNow", "/F"],
+            capture_output=True, timeout=5,
+        )
 
         # Verify it started
         check = subprocess.run(
@@ -222,11 +240,11 @@ def install(server_url, api_key, progress_callback=None):
             capture_output=True, text=True, timeout=10,
         )
         if AGENT_EXE_NAME in check.stdout:
-            log("Agente rodando em segundo plano (invisível).")
+            log("Agente rodando em segundo plano (invisÃ­vel).")
         else:
-            log("AVISO: Agente pode não ter iniciado. Será iniciado no próximo boot.")
+            log("AVISO: Agente pode nÃ£o ter iniciado. SerÃ¡ iniciado no prÃ³ximo boot.")
 
-        log("Instalação concluída com sucesso!")
+        log("InstalaÃ§Ã£o concluÃ­da com sucesso!")
         return True, "\n".join(steps)
 
     except Exception as e:
@@ -265,7 +283,7 @@ def uninstall():
         )
     except Exception as e:
         ctypes.windll.user32.MessageBoxW(
-            0, f"Erro na desinstalação: {e}", "SysID9", 0x10
+            0, f"Erro na desinstalaÃ§Ã£o: {e}", "SysID9", 0x10
         )
     sys.exit(0)
 
@@ -328,14 +346,14 @@ class InstallerGUI:
         content = tk.Frame(self.root, bg=bg, padx=40, pady=20)
         content.pack(fill="both", expand=True)
 
-        tk.Label(content, text="Instalação do Agente de Monitoramento",
+        tk.Label(content, text="InstalaÃ§Ã£o do Agente de Monitoramento",
                  font=("Segoe UI", 12), bg=bg, fg=fg).pack(pady=(0, 20))
 
         # Check if already installed
         existing_id = _read_existing_agent_id()
         if existing_id:
             tk.Label(content,
-                     text=f"Atualização detectada (ID: {existing_id[:8]}...)",
+                     text=f"AtualizaÃ§Ã£o detectada (ID: {existing_id[:8]}...)",
                      font=("Segoe UI", 9), bg=bg, fg="#52c41a").pack(pady=(0, 10))
 
         tk.Label(content, text="URL do Servidor:", font=("Segoe UI", 10),
@@ -354,9 +372,9 @@ class InstallerGUI:
         self.key_entry.insert(0, "dev-agent-key-2024")
         self.key_entry.pack(fill="x", pady=(2, 10))
 
-        tk.Label(content, text=f"Instalação: {INSTALL_DIR}",
+        tk.Label(content, text=f"InstalaÃ§Ã£o: {INSTALL_DIR}",
                  font=("Segoe UI", 9), bg=bg, fg="#666").pack(anchor="w")
-        tk.Label(content, text="O agente será invisível e iniciará com o Windows.",
+        tk.Label(content, text="O agente serÃ¡ invisÃ­vel e iniciarÃ¡ com o Windows.",
                  font=("Segoe UI", 9, "italic"), bg=bg, fg="#888").pack(anchor="w", pady=(2, 10))
 
         self.log_text = tk.Text(content, height=5, font=("Consolas", 9),
@@ -393,10 +411,10 @@ class InstallerGUI:
         key = self.key_entry.get().strip()
 
         if not server:
-            messagebox.showwarning("Atenção", "Informe a URL do servidor.")
+            messagebox.showwarning("AtenÃ§Ã£o", "Informe a URL do servidor.")
             return
         if not key:
-            messagebox.showwarning("Atenção", "Informe o token de registro.")
+            messagebox.showwarning("AtenÃ§Ã£o", "Informe o token de registro.")
             return
 
         self._installing = True
@@ -424,15 +442,15 @@ class InstallerGUI:
             messagebox.showinfo(
                 "SysID9",
                 "Agente instalado com sucesso!\n\n"
-                "O agente está rodando em segundo plano,\n"
-                "invisível ao usuário, e iniciará\n"
+                "O agente estÃ¡ rodando em segundo plano,\n"
+                "invisÃ­vel ao usuÃ¡rio, e iniciarÃ¡\n"
                 "automaticamente com o Windows.\n\n"
-                "Se parado, será reiniciado automaticamente\n"
-                "em até 5 minutos.",
+                "Se parado, serÃ¡ reiniciado automaticamente\n"
+                "em atÃ© 5 minutos.",
             )
             self.root.destroy()
         else:
-            messagebox.showerror("Erro", f"Falha na instalação:\n\n{log}")
+            messagebox.showerror("Erro", f"Falha na instalaÃ§Ã£o:\n\n{log}")
             self.install_btn.configure(state="normal", text="Tentar Novamente")
             self.cancel_btn.configure(state="normal")
             self.server_entry.configure(state="normal")
@@ -480,7 +498,7 @@ def main():
         success, _ = install(server, key)
         sys.exit(0 if success else 1)
 
-    # GUI — request admin if needed
+    # GUI â€" request admin if needed
     if not is_admin():
         exe = _get_real_exe()
         try:
@@ -498,3 +516,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
