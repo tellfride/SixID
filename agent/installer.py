@@ -250,14 +250,27 @@ def run_agent():
 
 def detect_server_url():
     import socket
+    import urllib.request
+
+    # Try to find the server by scanning common IPs in the local subnet
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         local_ip = s.getsockname()[0]
         s.close()
-        return f"http://{local_ip}:8000"
+        subnet = ".".join(local_ip.split(".")[:3])
+
+        # Try the local IP first (if server is on same machine)
+        for ip in [local_ip, f"{subnet}.1", f"{subnet}.109", f"{subnet}.100"]:
+            try:
+                urllib.request.urlopen(f"http://{ip}:8000/api/health", timeout=2)
+                return f"http://{ip}:8000"
+            except Exception:
+                continue
     except Exception:
-        return "http://localhost:8000"
+        pass
+
+    return "http://localhost:8000"
 
 
 class InstallerGUI:
@@ -368,7 +381,11 @@ class InstallerGUI:
             self.root.after(0, self._append_log, msg)
 
         def do_install():
-            success, log = install(server, key, progress_callback=progress)
+            try:
+                success, log = install(server, key, progress_callback=progress)
+            except Exception as e:
+                success, log = False, f"Erro inesperado: {e}"
+                progress(f"ERRO: {e}")
             self.root.after(0, self._install_done, success, log)
 
         threading.Thread(target=do_install, daemon=True).start()
@@ -399,6 +416,12 @@ class InstallerGUI:
         self.root.destroy()
 
 
+def _get_real_exe():
+    if getattr(sys, "frozen", False):
+        return sys.executable
+    return os.path.abspath(sys.argv[0])
+
+
 def main():
     args = sys.argv[1:]
 
@@ -412,8 +435,9 @@ def main():
 
     if "/silent" in args or "--silent" in args:
         if not is_admin():
+            exe = _get_real_exe()
             ctypes.windll.shell32.ShellExecuteW(
-                None, "runas", sys.executable, " ".join(f'"{a}"' for a in sys.argv[1:]), None, 0
+                None, "runas", exe, " ".join(f'"{a}"' for a in sys.argv[1:]), None, 0
             )
             sys.exit(0)
 
@@ -428,12 +452,18 @@ def main():
         success, _ = install(server, key)
         sys.exit(0 if success else 1)
 
-    # GUI
+    # GUI — request admin if needed
     if not is_admin():
-        ctypes.windll.shell32.ShellExecuteW(
-            None, "runas", sys.executable, " ".join(f'"{a}"' for a in sys.argv[1:]), None, 1
-        )
-        sys.exit(0)
+        exe = _get_real_exe()
+        try:
+            ret = ctypes.windll.shell32.ShellExecuteW(
+                None, "runas", exe, "--elevated", None, 1
+            )
+            if ret > 32:
+                sys.exit(0)
+        except Exception:
+            pass
+        # If elevation failed, try running GUI anyway (may have limited permissions)
 
     InstallerGUI()
 
