@@ -9,7 +9,7 @@ import {
   PlayCircleOutlined, DeleteOutlined, EnvironmentOutlined,
 } from '@ant-design/icons';
 import { getDevice, getDeviceChanges, getDeviceSoftware, getDeviceServices,
-  initiateVnc, lockScreen, unlockScreen, deleteDevice, getRoomsFlat, updateDevice } from '../api/endpoints';
+  initiateVnc, lockScreen, unlockScreen, deleteDevice, getRoomsFlat, updateDevice, sendCommand } from '../api/endpoints';
 import { useAuthStore } from '../store/authStore';
 import { UserOutlined, TeamOutlined } from '@ant-design/icons';
 import type { DeviceDetail, HardwareChange, SoftwareInfo, ServiceInfo, LocalUserInfo } from '../types';
@@ -351,8 +351,35 @@ export default function DeviceDetailPage() {
               render: (v: string) => v || '-' },
             { title: 'Último Logon', dataIndex: 'last_logon', key: 'last_logon', width: 180,
               render: (v: string) => v || '-' },
-            { title: 'Perfil', dataIndex: 'profile_path', key: 'profile', ellipsis: true,
-              render: (v: string) => v || '-' },
+            ...(canRemote ? [{
+              title: 'Ação', key: 'action', width: 130,
+              render: (_: any, record: any) => (
+                <Popconfirm
+                  title={record.is_active
+                    ? `Desabilitar o usuário "${record.username}"?`
+                    : `Habilitar o usuário "${record.username}"?`}
+                  onConfirm={async () => {
+                    try {
+                      const cmd = record.is_active ? 'disable_user' : 'enable_user';
+                      await sendCommand(deviceId, cmd, { username: record.username });
+                      message.success(
+                        record.is_active
+                          ? `Usuário "${record.username}" será desabilitado`
+                          : `Usuário "${record.username}" será habilitado`
+                      );
+                      setTimeout(loadDevice, 3000);
+                    } catch (err: any) {
+                      message.error(err.response?.data?.detail || 'Erro ao executar');
+                    }
+                  }}
+                >
+                  <Button size="small" danger={record.is_active} type={record.is_active ? 'default' : 'primary'}
+                    style={{ fontSize: 12 }}>
+                    {record.is_active ? 'Desabilitar' : 'Habilitar'}
+                  </Button>
+                </Popconfirm>
+              ),
+            }] : []),
           ]} />
       ),
     },

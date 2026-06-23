@@ -21,6 +21,8 @@ def execute_command(command: str, params: dict | None = None) -> dict:
         "create_user": _handle_create_user,
         "change_password": _handle_change_password,
         "list_users": _handle_list_users,
+        "disable_user": _handle_disable_user,
+        "enable_user": _handle_enable_user,
     }
 
     handler = handlers.get(command)
@@ -176,3 +178,35 @@ def _handle_list_users(params: dict) -> dict:
     user_list = [{"username": u, "is_admin": u in admins} for u in users if u]
 
     return {"success": True, "result": user_list}
+
+
+def _handle_disable_user(params: dict) -> dict:
+    username = params.get("username", "").strip()
+    if not username:
+        return {"success": False, "result": "Username is required"}
+
+    result = subprocess.run(
+        ["net", "user", username, "/active:no"],
+        capture_output=True, text=True, timeout=15,
+    )
+    if result.returncode != 0:
+        return {"success": False, "result": result.stderr.strip() or result.stdout.strip()}
+
+    logger.info(f"User '{username}' disabled")
+    return {"success": True, "result": f"Usuário '{username}' desabilitado com sucesso"}
+
+
+def _handle_enable_user(params: dict) -> dict:
+    username = params.get("username", "").strip()
+    if not username:
+        return {"success": False, "result": "Username is required"}
+
+    result = subprocess.run(
+        ["net", "user", username, "/active:yes"],
+        capture_output=True, text=True, timeout=15,
+    )
+    if result.returncode != 0:
+        return {"success": False, "result": result.stderr.strip() or result.stdout.strip()}
+
+    logger.info(f"User '{username}' enabled")
+    return {"success": True, "result": f"Usuário '{username}' habilitado com sucesso"}
