@@ -1,16 +1,19 @@
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func
+from sqlalchemy import func, case, literal
 from sqlalchemy.orm import Session
 
 from app.config import TIMEZONE_BR
 from app.database import get_db
 from app.models.device import Device, DeviceStatus
-from app.models.inventory import DeviceOS, DeviceStorage
+from app.models.inventory import DeviceOS, DeviceStorage, DeviceRAM, DeviceSoftware
 from app.models.tracking import HardwareChange
 from app.models.location import Room, Sector, Branch, Company, Unit
-from app.schemas.dashboard import DashboardStats, ChartDataPoint, AlertHistoryPoint, DashboardChartData
+from app.schemas.dashboard import (
+    DashboardStats, ChartDataPoint, AlertHistoryPoint, DashboardChartData,
+    DiskHealthItem, TopSoftwareItem,
+)
 from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
@@ -33,9 +36,26 @@ def get_stats(db: Session = Depends(get_db), _=Depends(get_current_user)):
         HardwareChange.detected_at >= week_ago
     ).scalar() or 0
 
+    now = datetime.now(TIMEZONE_BR)
+    if total > 0:
+        avg_uptime = round((online / total) * 100, 1)
+    else:
+        avg_uptime = 0.0
+
+    offline_devices = db.query(Device).filter(Device.status == DeviceStatus.OFFLINE, Device.last_seen != None).all()
+    if offline_devices:
+        total_hours = sum(
+            (now - d.last_seen.replace(tzinfo=TIMEZONE_BR) if d.last_seen.tzinfo is None else now - d.last_seen).total_seconds() / 3600
+            for d in offline_devices
+        )
+        avg_offline_hours = round(total_hours / len(offline_devices), 1)
+    else:
+        avg_offline_hours = 0.0
+
     return DashboardStats(
         total_devices=total, online=online, offline=offline,
         alerts=alerts, recent_changes=recent_changes,
+        avg_uptime_percent=avg_uptime, avg_offline_hours=avg_offline_hours,
     )
 
 
@@ -81,3 +101,56 @@ def get_alert_history(days: int = 30, db: Session = Depends(get_db), _=Depends(g
             .group_by(func.date(HardwareChange.detected_at))
             .order_by(func.date(HardwareChange.detected_at)).all())
     return [AlertHistoryPoint(date=str(d), count=c) for d, c in rows]
+
+
+@router.get("/ram-distribution", response_model=DashboardChartData)
+def get_ram_distribution(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    rows = db.query(DeviceRAM.total_gb).filter(DeviceRAM.total_gb != None).all()
+    buckets: dict[str, int] = {}
+    for (total_gb,) in rows:
+        if total_gb is None:
+            continue
+        gb = round(total_gb)
+        if gb <= 4:
+            label = "≤4 GB"
+        elif gb <= 8:
+            label = "8 GB"
+        elif gb <= 16:
+            label = "16 GB"
+        elif gb <= 32:
+            label = "32 GB"
+        else:
+            label = "64+ GB"
+        buckets[label] = buckets.get(label, 0) + 1
+    order = ["≤4 GB", "8 GB", "16 GB", "32 GB", "64+ GB"]
+    return DashboardChartData(data=[
+        ChartDataPoint(label=k, value=buckets.get(k, 0)) for k in order if buckets.get(k, 0) > 0
+    ])
+
+
+@router.get("/disk-health", response_model=list[DiskHealthItem])
+def get_disk_health(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    rows = (db.query(Device.hostname, DeviceStorage.model, DeviceStorage.capacity_gb,
+                     DeviceStorage.health, DeviceStorage.media_type)
+            .join(DeviceStorage, Device.id == DeviceStorage.device_id)
+            .filter(DeviceStorage.capacity_gb != None)
+            .order_by(Device.hostname).all())
+    return [
+        DiskHealthItem(
+            hostname=hostname, model=model or "Desconhecido",
+            capacity_gb=round(capacity_gb or 0, 1),
+            health=health or "Desconhecido",
+            media_type=media_type or "HDD",
+        )
+        for hostname, model, capacity_gb, health, media_type in rows
+    ]
+
+
+@router.get("/top-software", response_model=list[TopSoftwareItem])
+def get_top_software(limit: int = 10, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    rows = (db.query(DeviceSoftware.name, func.count(DeviceSoftware.id).label("cnt"))
+            .filter(DeviceSoftware.name != None, DeviceSoftware.name != "")
+            .group_by(DeviceSoftware.name)
+            .order_by(func.count(DeviceSoftware.id).desc())
+            .limit(limit).all())
+    return [TopSoftwareItem(name=name, count=count) for name, count in rows]

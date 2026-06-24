@@ -1,3 +1,4 @@
+import subprocess
 from datetime import timezone, timedelta
 
 from pydantic_settings import BaseSettings
@@ -5,9 +6,23 @@ from pydantic_settings import BaseSettings
 TIMEZONE_BR = timezone(timedelta(hours=-3))
 
 
+def _get_git_version() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0"],
+            capture_output=True, text=True, timeout=5,
+        )
+        tag = result.stdout.strip()
+        if tag.startswith("v"):
+            return tag[1:]
+        return tag or "1.3.4"
+    except Exception:
+        return "1.3.4"
+
+
 class Settings(BaseSettings):
     APP_NAME: str = "SixiD"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = _get_git_version()
     DEBUG: bool = False
 
     DATABASE_URL: str = "sqlite:///./sysid9.db"

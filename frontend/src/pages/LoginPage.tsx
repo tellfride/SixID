@@ -34,8 +34,8 @@ export default function LoginPage() {
       <Card
         style={{
           width: 440,
-          background: '#111927',
-          border: '1px solid #1E293B',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
           borderRadius: 16,
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
         }}
@@ -55,7 +55,7 @@ export default function LoginPage() {
               Sixi<span style={{ color: '#1565FF' }}>D</span>
             </Title>
           </div>
-          <Text style={{ color: '#5B6470', fontSize: 13 }}>
+          <Text style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
             Sistema de Gestão de Ativos e Inventário de TI
           </Text>
         </Space>
@@ -63,14 +63,14 @@ export default function LoginPage() {
         <Form onFinish={onFinish} layout="vertical" size="large">
           <Form.Item name="username" rules={[{ required: true, message: 'Informe o usuário' }]}>
             <Input
-              prefix={<UserOutlined style={{ color: '#5B6470' }} />}
+              prefix={<UserOutlined style={{ color: 'var(--text-secondary)' }} />}
               placeholder="Usuário"
               style={{ borderRadius: 8, height: 48 }}
             />
           </Form.Item>
           <Form.Item name="password" rules={[{ required: true, message: 'Informe a senha' }]}>
             <Input.Password
-              prefix={<LockOutlined style={{ color: '#5B6470' }} />}
+              prefix={<LockOutlined style={{ color: 'var(--text-secondary)' }} />}
               placeholder="Senha"
               style={{ borderRadius: 8, height: 48 }}
             />
@@ -94,7 +94,7 @@ export default function LoginPage() {
           </Form.Item>
         </Form>
 
-        <Text style={{ display: 'block', textAlign: 'center', fontSize: 12, color: '#5B6470' }}>
+        <Text style={{ display: 'block', textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
           Usuário padrão: admin / admin123
         </Text>
       </Card>

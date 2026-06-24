@@ -47,6 +47,12 @@ export const getDevicesPerUnit = () =>
   api.get<{ data: ChartDataPoint[] }>('/dashboard/devices-per-unit');
 export const getAlertHistory = (days = 30) =>
   api.get<AlertHistoryPoint[]>('/dashboard/alert-history', { params: { days } });
+export const getRamDistribution = () =>
+  api.get<{ data: ChartDataPoint[] }>('/dashboard/ram-distribution');
+export const getDiskHealth = () =>
+  api.get<{ hostname: string; model: string; capacity_gb: number; health: string; media_type: string }[]>('/dashboard/disk-health');
+export const getTopSoftware = (limit = 10) =>
+  api.get<{ name: string; count: number }[]>('/dashboard/top-software', { params: { limit } });
 
 // Locations
 export const getLocationTree = () =>

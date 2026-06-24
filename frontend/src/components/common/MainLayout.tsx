@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Avatar, Dropdown, Typography, Space, Input } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Typography, Space, Input, Button, Tooltip } from 'antd';
 import {
   DashboardOutlined, DesktopOutlined, EnvironmentOutlined,
   UserOutlined, AuditOutlined, LogoutOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, SearchOutlined, DatabaseOutlined, KeyOutlined,
+  SunOutlined, MoonOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../../store/authStore';
+import { useThemeStore } from '../../store/themeStore';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -18,7 +20,7 @@ const SixiDLogo = ({ collapsed }: { collapsed: boolean }) => (
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    borderBottom: '1px solid #1E293B',
+    borderBottom: '1px solid var(--border)',
     padding: '0 16px',
   }}>
     <svg width={collapsed ? 28 : 32} height={collapsed ? 28 : 32} viewBox="0 0 40 40" fill="none">
@@ -34,7 +36,7 @@ const SixiDLogo = ({ collapsed }: { collapsed: boolean }) => (
         fontSize: 20,
         fontWeight: 700,
         fontFamily: "'Poppins', sans-serif",
-        color: '#ffffff',
+        color: 'var(--text)',
         letterSpacing: '-0.5px',
       }}>
         Sixi<span style={{ color: '#1565FF' }}>D</span>
@@ -45,9 +47,16 @@ const SixiDLogo = ({ collapsed }: { collapsed: boolean }) => (
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [version, setVersion] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const { mode, toggle } = useThemeStore();
+  const isDark = mode === 'dark';
+
+  useEffect(() => {
+    fetch('/api/health').then(r => r.json()).then(d => setVersion(d.version || '')).catch(() => {});
+  }, []);
 
   const menuItems = [
     { key: '/', icon: <DashboardOutlined />, label: 'Dashboard' },
@@ -79,13 +88,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         trigger={null}
         width={240}
         style={{
-          background: '#0B1220',
-          borderRight: '1px solid #1E293B',
+          background: 'var(--sidebar-bg)',
+          borderRight: '1px solid var(--border)',
         }}
       >
         <SixiDLogo collapsed={collapsed} />
         <Menu
-          theme="dark"
+          theme={isDark ? 'dark' : 'light'}
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
@@ -95,64 +104,65 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       </Sider>
       <Layout>
         <Header style={{
-          background: '#0B1220',
+          background: 'var(--header-bg)',
           padding: '0 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: '1px solid #1E293B',
+          borderBottom: '1px solid var(--border)',
           height: 64,
         }}>
           <Space>
             <div
               onClick={() => setCollapsed(!collapsed)}
-              style={{ cursor: 'pointer', fontSize: 18, color: '#8896A6' }}
+              style={{ cursor: 'pointer', fontSize: 18, color: 'var(--text-muted)' }}
             >
               {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             </div>
             <Input
               placeholder="Buscar ativo..."
-              prefix={<SearchOutlined style={{ color: '#5B6470' }} />}
-              style={{
-                width: 280,
-                background: '#111927',
-                borderColor: '#1E293B',
-                borderRadius: 8,
+              prefix={<SearchOutlined style={{ color: 'var(--text-secondary)' }} />}
+              style={{ width: 280, borderRadius: 8 }}
+              onPressEnter={(e) => {
+                const val = (e.target as HTMLInputElement).value.trim();
+                if (val) navigate(`/devices?search=${encodeURIComponent(val)}`);
               }}
             />
           </Space>
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-            <Space style={{ cursor: 'pointer' }}>
-              <Avatar
-                icon={<UserOutlined />}
-                style={{ backgroundColor: '#1565FF' }}
+          <Space size="middle">
+            <Tooltip title={isDark ? 'Tema Claro' : 'Tema Escuro'}>
+              <Button
+                type="text"
+                icon={isDark ? <SunOutlined /> : <MoonOutlined />}
+                onClick={toggle}
+                style={{ color: 'var(--text-muted)', fontSize: 18 }}
               />
-              <div style={{ lineHeight: 1.3 }}>
-                <Text style={{ color: '#E6EBF1', fontSize: 13, display: 'block' }}>
-                  {user?.full_name || user?.username}
-                </Text>
-                <Text style={{ color: '#5B6470', fontSize: 11, display: 'block' }}>
-                  {user?.role === 'admin' ? 'Administrador' : user?.role === 'technician' ? 'Técnico' : 'Visualizador'}
-                </Text>
-              </div>
-            </Space>
-          </Dropdown>
+            </Tooltip>
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+              <Space style={{ cursor: 'pointer' }}>
+                <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1565FF' }} />
+                <div style={{ lineHeight: 1.3 }}>
+                  <Text style={{ color: 'var(--text)', fontSize: 13, display: 'block' }}>
+                    {user?.full_name || user?.username}
+                  </Text>
+                  <Text style={{ color: 'var(--text-secondary)', fontSize: 11, display: 'block' }}>
+                    {user?.role === 'admin' ? 'Administrador' : user?.role === 'technician' ? 'Técnico' : 'Visualizador'}
+                  </Text>
+                </div>
+              </Space>
+            </Dropdown>
+          </Space>
         </Header>
-        <Content style={{
-          margin: 24,
-          overflow: 'auto',
-          background: '#0B1220',
-        }}>
+        <Content style={{ margin: 24, overflow: 'auto' }}>
           {children}
         </Content>
         <div style={{
           textAlign: 'center',
           padding: '12px 0',
-          borderTop: '1px solid #1E293B',
-          background: '#0B1220',
+          borderTop: '1px solid var(--border)',
         }}>
-          <Text style={{ color: '#5B6470', fontSize: 11 }}>
-            SixiD v1.3.0 - Sistema de Gestao de Ativos e Inventario de TI
+          <Text style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
+            SixiD {version ? `v${version}` : ''} — Sistema de Gestao de Ativos e Inventario de TI
           </Text>
         </div>
       </Layout>

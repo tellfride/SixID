@@ -16,12 +16,12 @@ import type { Device } from '../types';
 const { Title, Text } = Typography;
 
 const cardStyle = {
-  background: '#111927',
-  border: '1px solid #1E293B',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border)',
   borderRadius: 12,
 };
 
-interface InventoryDevice extends Device {
+interface InventoryDevice extends Omit<Device, 'os_name' | 'cpu_model'> {
   os_name?: string;
   cpu_model?: string;
   ram_total?: number;
@@ -219,7 +219,7 @@ export default function InventoryPage() {
   return (
     <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
-        <Title level={3} style={{ color: '#E6EBF1', margin: 0 }}>Inventário</Title>
+        <Title level={3} style={{ color: 'var(--text)', margin: 0 }}>Inventário</Title>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={loadInventory}>Atualizar</Button>
           <Button type="primary" icon={<DownloadOutlined />} onClick={handleExport}>
@@ -232,23 +232,23 @@ export default function InventoryPage() {
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={12} sm={8}>
           <Card style={{ ...cardStyle, borderTop: '3px solid #1565FF', height: '100%' }}>
-            <Statistic title={<span style={{ color: '#5B6470', fontSize: 12 }}>Total de Ativos</span>}
+            <Statistic title={<span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Total de Ativos</span>}
               value={devices.length} prefix={<DesktopOutlined style={{ color: '#1565FF' }} />}
-              valueStyle={{ color: '#E6EBF1', fontWeight: 700 }} />
+              valueStyle={{ color: 'var(--text)', fontWeight: 700 }} />
           </Card>
         </Col>
         <Col xs={12} sm={8}>
           <Card style={{ ...cardStyle, borderTop: '3px solid #00BFA5', height: '100%' }}>
-            <Statistic title={<span style={{ color: '#5B6470', fontSize: 12 }}>Online</span>}
+            <Statistic title={<span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Online</span>}
               value={online} prefix={<WifiOutlined style={{ color: '#00BFA5' }} />}
-              valueStyle={{ color: '#E6EBF1', fontWeight: 700 }} />
+              valueStyle={{ color: 'var(--text)', fontWeight: 700 }} />
           </Card>
         </Col>
         <Col xs={24} sm={8}>
           <Card style={{ ...cardStyle, borderTop: '3px solid #FF4D4F', height: '100%' }}>
-            <Statistic title={<span style={{ color: '#5B6470', fontSize: 12 }}>Offline</span>}
+            <Statistic title={<span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Offline</span>}
               value={offline} prefix={<DesktopOutlined style={{ color: '#FF4D4F' }} />}
-              valueStyle={{ color: '#E6EBF1', fontWeight: 700 }} />
+              valueStyle={{ color: 'var(--text)', fontWeight: 700 }} />
           </Card>
         </Col>
       </Row>

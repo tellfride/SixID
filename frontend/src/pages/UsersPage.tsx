@@ -102,14 +102,14 @@ export default function UsersPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-        <Title level={3} style={{ color: '#E6EBF1', margin: 0 }}>Usuários</Title>
+        <Title level={3} style={{ color: 'var(--text)', margin: 0 }}>Usuários</Title>
         <Button type="primary" icon={<PlusOutlined />}
           onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>
           Novo Usuário
         </Button>
       </div>
 
-      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12 }}>
+      <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12 }}>
         <Table dataSource={users} columns={columns} rowKey="id" loading={loading} size="middle" />
       </Card>
 

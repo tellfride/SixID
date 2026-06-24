@@ -7,6 +7,8 @@ class DashboardStats(BaseModel):
     offline: int
     alerts: int
     recent_changes: int
+    avg_uptime_percent: float
+    avg_offline_hours: float
 
 
 class ChartDataPoint(BaseModel):
@@ -21,3 +23,16 @@ class AlertHistoryPoint(BaseModel):
 
 class DashboardChartData(BaseModel):
     data: list[ChartDataPoint]
+
+
+class DiskHealthItem(BaseModel):
+    hostname: str
+    model: str
+    capacity_gb: float
+    health: str
+    media_type: str
+
+
+class TopSoftwareItem(BaseModel):
+    name: str
+    count: int

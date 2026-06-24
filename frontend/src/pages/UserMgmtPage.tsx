@@ -14,8 +14,8 @@ import type { Device } from '../types';
 const { Title, Text } = Typography;
 
 const cardStyle = {
-  background: '#111927',
-  border: '1px solid #1E293B',
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border)',
   borderRadius: 12,
 };
 
@@ -190,7 +190,7 @@ export default function UserMgmtPage() {
   return (
     <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
-        <Title level={3} style={{ color: '#E6EBF1', margin: 0 }}>
+        <Title level={3} style={{ color: 'var(--text)', margin: 0 }}>
           Gerenciamento de Usuários Remotos
         </Title>
       </Row>
@@ -199,7 +199,7 @@ export default function UserMgmtPage() {
       <Card style={{ ...cardStyle, marginBottom: 16 }}>
         <Row justify="space-between" align="middle">
           <Space>
-            <Text style={{ color: '#5B6470' }}>
+            <Text style={{ color: 'var(--text-secondary)' }}>
               {selectedIds.length} de {devices.length} selecionado(s)
             </Text>
             <Button size="small" onClick={handleSelectAll}>

@@ -89,9 +89,9 @@ export default function DevicesPage() {
 
   return (
     <div>
-      <Title level={3} style={{ color: '#E6EBF1', marginBottom: 24 }}>Ativos</Title>
+      <Title level={3} style={{ color: 'var(--text)', marginBottom: 24 }}>Ativos</Title>
 
-      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12, marginBottom: 16 }}>
+      <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 16 }}>
         <Row gutter={16} align="middle">
           <Col flex="auto">
             <Input
@@ -126,7 +126,7 @@ export default function DevicesPage() {
         </Row>
       </Card>
 
-      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12 }}>
+      <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12 }}>
         <Table
           dataSource={devices}
           columns={columns}

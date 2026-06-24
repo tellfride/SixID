@@ -166,6 +166,8 @@ export interface DashboardStats {
   offline: number;
   alerts: number;
   recent_changes: number;
+  avg_uptime_percent: number;
+  avg_offline_hours: number;
 }
 
 export interface ChartDataPoint {

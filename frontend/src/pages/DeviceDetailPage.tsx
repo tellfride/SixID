@@ -170,7 +170,7 @@ export default function DeviceDetailPage() {
       children: (
         <Row gutter={[16, 16]}>
           <Col span={12}>
-            <Card size="small" title="Sistema Operacional" style={{ background: '#162032', border: '1px solid #1E293B', borderRadius: 10 }}>
+            <Card size="small" title="Sistema Operacional" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border)', borderRadius: 10 }}>
               <Descriptions column={1} size="small">
                 <Descriptions.Item label="Nome">{device.os_info?.name || '-'}</Descriptions.Item>
                 <Descriptions.Item label="Versão">{device.os_info?.version || '-'}</Descriptions.Item>
@@ -180,7 +180,7 @@ export default function DeviceDetailPage() {
             </Card>
           </Col>
           <Col span={12}>
-            <Card size="small" title="Processador" style={{ background: '#162032', border: '1px solid #1E293B', borderRadius: 10 }}>
+            <Card size="small" title="Processador" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border)', borderRadius: 10 }}>
               {device.cpus.map((cpu, i) => (
                 <Descriptions column={1} size="small" key={i}>
                   <Descriptions.Item label="Modelo">{cpu.model || '-'}</Descriptions.Item>
@@ -192,7 +192,7 @@ export default function DeviceDetailPage() {
             </Card>
           </Col>
           <Col span={12}>
-            <Card size="small" title="Placa-mãe" style={{ background: '#162032', border: '1px solid #1E293B', borderRadius: 10 }}>
+            <Card size="small" title="Placa-mãe" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border)', borderRadius: 10 }}>
               <Descriptions column={1} size="small">
                 <Descriptions.Item label="Fabricante">{device.motherboard?.manufacturer || '-'}</Descriptions.Item>
                 <Descriptions.Item label="Modelo">{device.motherboard?.model || '-'}</Descriptions.Item>
@@ -201,7 +201,7 @@ export default function DeviceDetailPage() {
             </Card>
           </Col>
           <Col span={12}>
-            <Card size="small" title="BIOS" style={{ background: '#162032', border: '1px solid #1E293B', borderRadius: 10 }}>
+            <Card size="small" title="BIOS" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border)', borderRadius: 10 }}>
               <Descriptions column={1} size="small">
                 <Descriptions.Item label="Fabricante">{device.bios?.manufacturer || '-'}</Descriptions.Item>
                 <Descriptions.Item label="Versão">{device.bios?.version || '-'}</Descriptions.Item>
@@ -217,7 +217,7 @@ export default function DeviceDetailPage() {
       label: 'Memória',
       children: (
         <div>
-          <Card size="small" title="Uso de Memória" style={{ background: '#162032', border: '1px solid #1E293B', borderRadius: 10, marginBottom: 16 }}>
+          <Card size="small" title="Uso de Memória" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 16 }}>
             <Row align="middle" gutter={24}>
               <Col>
                 <Progress type="circle" percent={ramUsagePercent} size={80}
@@ -230,7 +230,7 @@ export default function DeviceDetailPage() {
               </Col>
             </Row>
           </Card>
-          <Card size="small" title="Slots de Memória" style={{ background: '#162032', border: '1px solid #1E293B', borderRadius: 10 }}>
+          <Card size="small" title="Slots de Memória" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border)', borderRadius: 10 }}>
             <Table dataSource={device.ram_slots} rowKey="slot" pagination={false} size="small"
               columns={[
                 { title: 'Slot', dataIndex: 'slot' },
@@ -280,7 +280,7 @@ export default function DeviceDetailPage() {
       children: (
         <Row gutter={[16, 16]}>
           <Col span={12}>
-            <Card size="small" title="Monitores" style={{ background: '#162032', border: '1px solid #1E293B', borderRadius: 10 }}>
+            <Card size="small" title="Monitores" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border)', borderRadius: 10 }}>
               <Table dataSource={device.monitors} rowKey="serial" pagination={false} size="small"
                 columns={[
                   { title: 'Fabricante', dataIndex: 'manufacturer' },
@@ -290,7 +290,7 @@ export default function DeviceDetailPage() {
             </Card>
           </Col>
           <Col span={12}>
-            <Card size="small" title="Impressoras" style={{ background: '#162032', border: '1px solid #1E293B', borderRadius: 10 }}>
+            <Card size="small" title="Impressoras" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border)', borderRadius: 10 }}>
               <Table dataSource={device.printers} rowKey="name" pagination={false} size="small"
                 columns={[
                   { title: 'Nome', dataIndex: 'name' },
@@ -410,13 +410,13 @@ export default function DeviceDetailPage() {
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/devices')}>Voltar</Button>
       </Space>
 
-      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12, marginBottom: 16 }}>
+      <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 16 }}>
         <Row justify="space-between" align="middle">
           <Col>
             <Space>
               <DesktopOutlined style={{ fontSize: 28, color: '#1565FF' }} />
               <div>
-                <Title level={4} style={{ margin: 0, color: '#E6EBF1' }}>{device.hostname}</Title>
+                <Title level={4} style={{ margin: 0, color: 'var(--text)' }}>{device.hostname}</Title>
                 <Text type="secondary">{device.location_path || 'Sem localização definida'}</Text>
               </div>
               <Tag color={device.status === 'online' ? 'green' : 'red'} style={{ marginLeft: 16 }}>
@@ -479,7 +479,7 @@ export default function DeviceDetailPage() {
         </Descriptions>
       </Card>
 
-      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12 }}>
+      <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12 }}>
         <Tabs items={tabItems} />
       </Card>
 

@@ -146,14 +146,14 @@ export default function LocationsPage() {
   return (
     <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
-        <Title level={3} style={{ color: '#E6EBF1', margin: 0 }}>Localizações</Title>
+        <Title level={3} style={{ color: 'var(--text)', margin: 0 }}>Localizações</Title>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={loadTree}>Atualizar</Button>
         </Space>
       </Row>
 
       {/* Quick add buttons */}
-      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12, marginBottom: 16 }}>
+      <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 16 }}>
         <Space wrap>
           {Object.entries(typeConfig).map(([key, cfg]) => (
             <Button
@@ -169,19 +169,19 @@ export default function LocationsPage() {
       </Card>
 
       {/* Tree view */}
-      <Card style={{ background: '#111927', border: '1px solid #1E293B', borderRadius: 12 }}>
+      <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12 }}>
         {tree.length > 0 ? (
           <Tree
             showIcon
             defaultExpandAll
             treeData={convertToTreeData(tree)}
-            style={{ background: 'transparent', color: '#E6EBF1' }}
+            style={{ background: 'transparent', color: 'var(--text)' }}
           />
         ) : (
           <div style={{ textAlign: 'center', padding: 40 }}>
-            <EnvironmentOutlined style={{ fontSize: 48, color: '#5B6470', marginBottom: 16 }} />
+            <EnvironmentOutlined style={{ fontSize: 48, color: 'var(--text-secondary)', marginBottom: 16 }} />
             <br />
-            <Text style={{ color: '#5B6470', fontSize: 14 }}>
+            <Text style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
               Nenhuma localização cadastrada.
             </Text>
             <br />
