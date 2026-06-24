@@ -57,9 +57,8 @@ async def initiate_vnc(
 
     sent = await _send_command_to_agent(device.agent_id, "start_vnc")
 
-    if not sent:
-        pending = PendingCommand(device_id=device.id, command="start_vnc")
-        db.add(pending)
+    pending = PendingCommand(device_id=device.id, command="start_vnc")
+    db.add(pending)
 
     session = RemoteSession(
         device_id=device.id, user_id=current_user.id, session_type="vnc",
@@ -115,13 +114,13 @@ async def lock_screen(
         ScreenLock.device_id == device.id, ScreenLock.is_active == True
     ).first()
     if active_lock:
-        raise HTTPException(status_code=400, detail="Tela já está bloqueada")
+        active_lock.is_active = False
+        db.commit()
 
     sent = await _send_command_to_agent(device.agent_id, "lock_screen", {"message": data.message})
 
-    if not sent:
-        pending = PendingCommand(device_id=device.id, command="lock_screen", params={"message": data.message})
-        db.add(pending)
+    pending = PendingCommand(device_id=device.id, command="lock_screen", params={"message": data.message})
+    db.add(pending)
 
     lock = ScreenLock(
         device_id=device.id,
@@ -166,9 +165,8 @@ async def unlock_screen(
 
     sent = await _send_command_to_agent(device.agent_id, "unlock_screen")
 
-    if not sent:
-        pending = PendingCommand(device_id=device.id, command="unlock_screen")
-        db.add(pending)
+    pending = PendingCommand(device_id=device.id, command="unlock_screen")
+    db.add(pending)
 
     lock.is_active = False
     session = db.query(RemoteSession).filter(
@@ -196,10 +194,8 @@ async def send_command(
 
     sent = await _send_command_to_agent(device.agent_id, data.command, data.params)
 
-    if not sent:
-        pending = PendingCommand(device_id=device.id, command=data.command, params=data.params)
-        db.add(pending)
-        db.flush()
+    pending = PendingCommand(device_id=device.id, command=data.command, params=data.params)
+    db.add(pending)
 
     log_action(db, "command_sent", user_id=current_user.id, target_type="device",
                target_id=device_id, details={"command": data.command, "params": data.params},
@@ -229,9 +225,8 @@ async def batch_create_user(
         params = {"username": data.username, "password": data.password, "is_admin": data.is_admin}
         sent = await _send_command_to_agent(device.agent_id, "create_user", params)
 
-        if not sent:
-            pending = PendingCommand(device_id=device.id, command="create_user", params=params)
-            db.add(pending)
+        pending = PendingCommand(device_id=device.id, command="create_user", params=params)
+        db.add(pending)
 
         results.append({
             "device_id": device_id,
@@ -264,9 +259,8 @@ async def batch_change_password(
         params = {"username": data.username, "password": data.password}
         sent = await _send_command_to_agent(device.agent_id, "change_password", params)
 
-        if not sent:
-            pending = PendingCommand(device_id=device.id, command="change_password", params=params)
-            db.add(pending)
+        pending = PendingCommand(device_id=device.id, command="change_password", params=params)
+        db.add(pending)
 
         results.append({
             "device_id": device_id,
@@ -299,9 +293,8 @@ async def batch_change_vnc_password(
         params = {"password": data.password}
         sent = await _send_command_to_agent(device.agent_id, "change_vnc_password", params)
 
-        if not sent:
-            pending = PendingCommand(device_id=device.id, command="change_vnc_password", params=params)
-            db.add(pending)
+        pending = PendingCommand(device_id=device.id, command="change_vnc_password", params=params)
+        db.add(pending)
 
         results.append({
             "device_id": device_id,
