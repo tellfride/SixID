@@ -36,6 +36,8 @@ export default function DeviceDetailPage() {
 
   useEffect(() => {
     loadDevice();
+    const interval = setInterval(loadDevice, 20000);
+    return () => clearInterval(interval);
   }, [id]);
 
   const loadDevice = async () => {

@@ -61,7 +61,11 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleWsMessage = useCallback(() => {
     loadData();

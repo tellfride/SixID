@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Table, Tag, Input, Select, Space, Typography, Row, Col, Button } from 'antd';
 import { SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import { getDevices } from '../api/endpoints';
+import { useWebSocket } from '../hooks/useWebSocket';
 import type { Device } from '../types';
 
 const { Title } = Typography;
@@ -31,7 +32,17 @@ export default function DevicesPage() {
     }
   };
 
-  useEffect(() => { loadDevices(); }, [page, statusFilter]);
+  useEffect(() => {
+    loadDevices();
+    const interval = setInterval(loadDevices, 15000);
+    return () => clearInterval(interval);
+  }, [page, statusFilter]);
+
+  const handleWsMessage = useCallback(() => {
+    loadDevices();
+  }, [page, statusFilter]);
+
+  useWebSocket(handleWsMessage);
 
   const handleExport = async () => {
     const token = localStorage.getItem('access_token');

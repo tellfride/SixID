@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+import asyncio
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -10,6 +12,7 @@ from app.schemas.agent import (
 )
 from app.services.inventory_service import register_device, process_heartbeat, process_inventory
 from app.utils.security import verify_agent_key
+from app.websocket.manager import manager
 
 router = APIRouter(prefix="/api/agent", tags=["Agent"])
 
@@ -25,24 +28,32 @@ def agent_register(
 
 
 @router.post("/heartbeat")
-def agent_heartbeat(
+async def agent_heartbeat(
     data: AgentHeartbeatRequest,
     db: Session = Depends(get_db),
     _=Depends(verify_agent_key),
 ):
     if not process_heartbeat(db, data.agent_id, data.current_user, data.hostname):
         raise HTTPException(status_code=404, detail="Device not registered")
+    await manager.broadcast_dashboard({
+        "type": "heartbeat",
+        "agent_id": data.agent_id,
+    })
     return {"status": "ok"}
 
 
 @router.post("/inventory")
-def agent_inventory(
+async def agent_inventory(
     data: AgentInventoryRequest,
     db: Session = Depends(get_db),
     _=Depends(verify_agent_key),
 ):
     if not process_inventory(db, data):
         raise HTTPException(status_code=404, detail="Device not registered")
+    await manager.broadcast_dashboard({
+        "type": "inventory_updated",
+        "agent_id": data.agent_id,
+    })
     return {"status": "ok"}
 
 
