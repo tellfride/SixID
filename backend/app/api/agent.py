@@ -35,9 +35,15 @@ async def agent_heartbeat(
 ):
     if not process_heartbeat(db, data.agent_id, data.current_user, data.hostname):
         raise HTTPException(status_code=404, detail="Device not registered")
+    device = db.query(Device).filter(Device.agent_id == data.agent_id).first()
     await manager.broadcast_dashboard({
         "type": "heartbeat",
         "agent_id": data.agent_id,
+        "device_id": device.id if device else None,
+        "hostname": device.hostname if device else data.hostname,
+        "current_user": data.current_user,
+        "status": "online",
+        "last_seen": device.last_seen.isoformat() if device and device.last_seen else None,
     })
     return {"status": "ok"}
 
@@ -50,9 +56,12 @@ async def agent_inventory(
 ):
     if not process_inventory(db, data):
         raise HTTPException(status_code=404, detail="Device not registered")
+    device = db.query(Device).filter(Device.agent_id == data.agent_id).first()
     await manager.broadcast_dashboard({
         "type": "inventory_updated",
         "agent_id": data.agent_id,
+        "device_id": device.id if device else None,
+        "hostname": device.hostname if device else data.hostname,
     })
     return {"status": "ok"}
 

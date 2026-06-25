@@ -4,6 +4,7 @@ import { Card, Table, Tag, Input, Select, Space, Typography, Row, Col, Button } 
 import { SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import { getDevices } from '../api/endpoints';
 import { useWebSocket } from '../hooks/useWebSocket';
+import type { WSMessage } from '../hooks/useWebSocket';
 import type { Device } from '../types';
 
 const { Title } = Typography;
@@ -12,7 +13,7 @@ export default function DevicesPage() {
   const [searchParams] = useSearchParams();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(searchParams.get('status') || undefined);
   const [page, setPage] = useState(1);
   const navigate = useNavigate();
@@ -32,15 +33,31 @@ export default function DevicesPage() {
     }
   };
 
-  useEffect(() => {
-    loadDevices();
-    const interval = setInterval(loadDevices, 15000);
-    return () => clearInterval(interval);
-  }, [page, statusFilter]);
+  useEffect(() => { loadDevices(); }, [page, statusFilter]);
 
-  const handleWsMessage = useCallback(() => {
-    loadDevices();
-  }, [page, statusFilter]);
+  // WebSocket: update device rows in-place
+  const handleWsMessage = useCallback((msg: WSMessage) => {
+    if (msg.type === 'status_change' && msg.agent_id) {
+      setDevices(prev => prev.map(d =>
+        d.agent_id === msg.agent_id
+          ? {
+              ...d,
+              status: (msg.status as Device['status']) || d.status,
+              last_seen: msg.last_seen || d.last_seen,
+              current_user: msg.current_user ?? d.current_user,
+            }
+          : d
+      ));
+    } else if (msg.type === 'heartbeat' && msg.agent_id) {
+      setDevices(prev => prev.map(d =>
+        d.agent_id === msg.agent_id
+          ? { ...d, status: 'online' as const, last_seen: msg.last_seen || d.last_seen, current_user: msg.current_user ?? d.current_user }
+          : d
+      ));
+    } else if (msg.type === 'inventory_updated') {
+      loadDevices();
+    }
+  }, [page, statusFilter, search]);
 
   useWebSocket(handleWsMessage);
 

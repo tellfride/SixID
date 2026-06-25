@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Row, Col, Card, Statistic, Typography, Table, Tag, Spin } from 'antd';
 import {
   DesktopOutlined, CheckCircleOutlined, CloseCircleOutlined,
@@ -11,10 +11,11 @@ import { getDashboardStats, getOsDistribution, getStorageUsage,
   getDevicesPerUnit, getAlertHistory, getDevices, getRamDistribution,
   getDiskHealth, getTopSoftware } from '../api/endpoints';
 import { useWebSocket } from '../hooks/useWebSocket';
+import type { WSMessage } from '../hooks/useWebSocket';
 import { useThemeStore } from '../store/themeStore';
 import type { DashboardStats, ChartDataPoint, AlertHistoryPoint, Device } from '../types';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const COLORS = ['#1565FF', '#00BFA5', '#FFB020', '#FF4D4F', '#7C3AED', '#0EA5E9', '#F472B6'];
 
@@ -39,51 +40,90 @@ export default function DashboardPage() {
   };
   const tooltipStyle = {
     background: isDark ? '#162032' : '#ffffff',
-    border: `1px solid var(--border)`,
+    border: '1px solid var(--border)',
     borderRadius: 8,
     color: isDark ? '#E6EBF1' : '#1a1a2e',
   };
   const axisColor = isDark ? '#5B6470' : '#9ca3af';
   const gridColor = isDark ? '#1E293B' : '#e5e7eb';
 
-  const loadData = async () => {
+  // ── Partial loaders ──
+  const refreshStats = useCallback(async () => {
     try {
-      const [statsRes, osRes, storageRes, unitRes, alertRes, devicesRes, ramRes, diskRes, swRes] = await Promise.all([
-        getDashboardStats(),
-        getOsDistribution(),
-        getStorageUsage(),
-        getDevicesPerUnit(),
-        getAlertHistory(),
-        getDevices({ page_size: 10 }),
-        getRamDistribution(),
-        getDiskHealth(),
-        getTopSoftware(10),
+      const { data } = await getDashboardStats();
+      setStats(data);
+    } catch {}
+  }, []);
+
+  const refreshDeviceTable = useCallback(async () => {
+    try {
+      const { data } = await getDevices({ page_size: 10 });
+      setDevices(data);
+    } catch {}
+  }, []);
+
+  const refreshCharts = useCallback(async () => {
+    try {
+      const [osRes, storageRes, unitRes, ramRes, diskRes, swRes, alertRes] = await Promise.all([
+        getOsDistribution(), getStorageUsage(), getDevicesPerUnit(),
+        getRamDistribution(), getDiskHealth(), getTopSoftware(10), getAlertHistory(),
       ]);
-      setStats(statsRes.data);
       setOsData(osRes.data.data);
       setStorageData(storageRes.data.data);
       setUnitData(unitRes.data.data);
-      setAlertData(alertRes.data);
-      setDevices(devicesRes.data);
       setRamData(ramRes.data.data);
       setDiskHealth(diskRes.data);
       setTopSoftware(swRes.data);
-    } catch (err) {
-      console.error('Failed to load dashboard:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 15000);
-    return () => clearInterval(interval);
+      setAlertData(alertRes.data);
+    } catch {}
   }, []);
 
-  const handleWsMessage = useCallback(() => { loadData(); }, []);
+  // ── Initial full load ──
+  useEffect(() => {
+    (async () => {
+      await Promise.all([refreshStats(), refreshDeviceTable(), refreshCharts()]);
+      setLoading(false);
+    })();
+  }, []);
+
+  // ── Fallback: refresh stats only every 60s ──
+  useEffect(() => {
+    const interval = setInterval(refreshStats, 60000);
+    return () => clearInterval(interval);
+  }, [refreshStats]);
+
+  // ── WebSocket: partial updates ──
+  const handleWsMessage = useCallback((msg: WSMessage) => {
+    if (msg.type === 'status_change') {
+      // Update device row in-place + refresh stats
+      if (msg.device_id) {
+        setDevices(prev => prev.map(d =>
+          d.agent_id === msg.agent_id
+            ? { ...d, status: (msg.status as Device['status']) || d.status, last_seen: msg.last_seen || d.last_seen, current_user: msg.current_user ?? d.current_user }
+            : d
+        ));
+      }
+      refreshStats();
+    } else if (msg.type === 'heartbeat') {
+      // Update last_seen in-place for the specific device
+      if (msg.agent_id) {
+        setDevices(prev => prev.map(d =>
+          d.agent_id === msg.agent_id
+            ? { ...d, status: 'online', last_seen: msg.last_seen || d.last_seen, current_user: msg.current_user ?? d.current_user }
+            : d
+        ));
+      }
+    } else if (msg.type === 'inventory_updated') {
+      // Inventory = hardware changed, refresh charts + device table
+      refreshCharts();
+      refreshDeviceTable();
+      refreshStats();
+    }
+  }, [refreshStats, refreshCharts, refreshDeviceTable]);
+
   useWebSocket(handleWsMessage);
 
+  // ── Columns & cards ──
   const columns = [
     { title: 'Hostname', dataIndex: 'hostname', key: 'hostname',
       render: (text: string, record: Device) => (
@@ -152,7 +192,7 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={12}>
           <Card title="Sistemas Operacionais" style={cardStyle}
-            styles={{ header: { borderBottom: `1px solid var(--border)`, color: 'var(--text)' } }}>
+            styles={{ header: { borderBottom: '1px solid var(--border)', color: 'var(--text)' } }}>
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie data={osData} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={95}
@@ -167,7 +207,7 @@ export default function DashboardPage() {
         </Col>
         <Col xs={24} lg={12}>
           <Card title="Distribuição de RAM" style={cardStyle}
-            styles={{ header: { borderBottom: `1px solid var(--border)`, color: 'var(--text)' } }}>
+            styles={{ header: { borderBottom: '1px solid var(--border)', color: 'var(--text)' } }}>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={ramData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -184,7 +224,7 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={12}>
           <Card title="Armazenamento por Tipo" style={cardStyle}
-            styles={{ header: { borderBottom: `1px solid var(--border)`, color: 'var(--text)' } }}>
+            styles={{ header: { borderBottom: '1px solid var(--border)', color: 'var(--text)' } }}>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={storageData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -198,7 +238,7 @@ export default function DashboardPage() {
         </Col>
         <Col xs={24} lg={12}>
           <Card title="Dispositivos por Unidade" style={cardStyle}
-            styles={{ header: { borderBottom: `1px solid var(--border)`, color: 'var(--text)' } }}>
+            styles={{ header: { borderBottom: '1px solid var(--border)', color: 'var(--text)' } }}>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={unitData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -215,7 +255,7 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={12}>
           <Card title="Top 10 Softwares Instalados" style={cardStyle}
-            styles={{ header: { borderBottom: `1px solid var(--border)`, color: 'var(--text)' } }}>
+            styles={{ header: { borderBottom: '1px solid var(--border)', color: 'var(--text)' } }}>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={topSoftware} layout="vertical" margin={{ left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -229,7 +269,7 @@ export default function DashboardPage() {
         </Col>
         <Col xs={24} lg={12}>
           <Card title="Histórico de Alterações" style={cardStyle}
-            styles={{ header: { borderBottom: `1px solid var(--border)`, color: 'var(--text)' } }}>
+            styles={{ header: { borderBottom: '1px solid var(--border)', color: 'var(--text)' } }}>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={alertData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -244,13 +284,13 @@ export default function DashboardPage() {
       </Row>
 
       <Card title="Saúde dos Discos" style={{ ...cardStyle, marginTop: 16 }}
-        styles={{ header: { borderBottom: `1px solid var(--border)`, color: 'var(--text)' } }}>
+        styles={{ header: { borderBottom: '1px solid var(--border)', color: 'var(--text)' } }}>
         <Table dataSource={diskHealth} columns={diskColumns} rowKey={(r) => `${r.hostname}-${r.model}`}
           pagination={{ pageSize: 8 }} size="small" />
       </Card>
 
       <Card title="Últimos Ativos Cadastrados" style={{ ...cardStyle, marginTop: 16 }}
-        styles={{ header: { borderBottom: `1px solid var(--border)`, color: 'var(--text)' } }}
+        styles={{ header: { borderBottom: '1px solid var(--border)', color: 'var(--text)' } }}
         extra={<a onClick={() => navigate('/devices')} style={{ color: '#1565FF' }}>Ver todos</a>}>
         <Table dataSource={devices} columns={columns} rowKey="id" pagination={false} size="small"
           onRow={(record) => ({ onClick: () => navigate(`/devices/${record.id}`), style: { cursor: 'pointer' } })} />

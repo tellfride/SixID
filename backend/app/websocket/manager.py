@@ -34,12 +34,24 @@ class ConnectionManager:
         await self.broadcast_status_change(agent_id, "offline")
 
     async def broadcast_status_change(self, agent_id: str, status: str):
-        message = json.dumps({
-            "type": "status_change",
-            "agent_id": agent_id,
-            "status": status,
-            "timestamp": datetime.now(TIMEZONE_BR).isoformat(),
-        })
+        db = SessionLocal()
+        try:
+            device = db.query(Device).filter(Device.agent_id == agent_id).first()
+            payload = {
+                "type": "status_change",
+                "agent_id": agent_id,
+                "status": status,
+                "timestamp": datetime.now(TIMEZONE_BR).isoformat(),
+            }
+            if device:
+                payload["device_id"] = device.id
+                payload["hostname"] = device.hostname
+                payload["current_user"] = device.current_user
+                payload["last_seen"] = device.last_seen.isoformat() if device.last_seen else None
+        finally:
+            db.close()
+
+        message = json.dumps(payload)
         disconnected = []
         for ws in self.dashboard_connections:
             try:

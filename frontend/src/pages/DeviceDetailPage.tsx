@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Card, Descriptions, Tabs, Table, Tag, Typography, Button, Space,
@@ -11,6 +11,8 @@ import {
 import { getDevice, getDeviceChanges, getDeviceSoftware, getDeviceServices,
   initiateVnc, lockScreen, unlockScreen, deleteDevice, getRoomsFlat, updateDevice, sendCommand } from '../api/endpoints';
 import { useAuthStore } from '../store/authStore';
+import { useWebSocket } from '../hooks/useWebSocket';
+import type { WSMessage } from '../hooks/useWebSocket';
 import { UserOutlined, TeamOutlined } from '@ant-design/icons';
 import type { DeviceDetail, HardwareChange, SoftwareInfo, ServiceInfo, LocalUserInfo } from '../types';
 
@@ -34,11 +36,31 @@ export default function DeviceDetailPage() {
 
   const deviceId = Number(id);
 
-  useEffect(() => {
-    loadDevice();
-    const interval = setInterval(loadDevice, 20000);
-    return () => clearInterval(interval);
-  }, [id]);
+  useEffect(() => { loadDevice(); }, [id]);
+
+  // WebSocket: only reload when THIS device changes
+  const handleWsMessage = useCallback((msg: WSMessage) => {
+    if (!device) return;
+    if (msg.agent_id === device.agent_id) {
+      if (msg.type === 'status_change') {
+        setDevice(prev => prev ? {
+          ...prev,
+          status: (msg.status as DeviceDetail['status']) || prev.status,
+          last_seen: msg.last_seen || prev.last_seen,
+          current_user: msg.current_user ?? prev.current_user,
+        } : prev);
+      } else if (msg.type === 'heartbeat') {
+        setDevice(prev => prev ? {
+          ...prev, status: 'online', last_seen: msg.last_seen || prev.last_seen,
+          current_user: msg.current_user ?? prev.current_user,
+        } : prev);
+      } else if (msg.type === 'inventory_updated') {
+        loadDevice();
+      }
+    }
+  }, [device?.agent_id]);
+
+  useWebSocket(handleWsMessage);
 
   const loadDevice = async () => {
     setLoading(true);
