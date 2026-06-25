@@ -9,15 +9,16 @@ TIMEZONE_BR = timezone(timedelta(hours=-3))
 def _get_git_version() -> str:
     try:
         result = subprocess.run(
-            ["git", "describe", "--tags", "--abbrev=0"],
+            ["git", "tag", "-l", "v*", "--sort=-version:refname"],
             capture_output=True, text=True, timeout=5,
         )
-        tag = result.stdout.strip()
-        if tag.startswith("v"):
-            return tag[1:]
-        return tag or "1.3.4"
+        for line in result.stdout.strip().splitlines():
+            tag = line.strip()
+            if tag.startswith("v"):
+                return tag[1:]
+        return "1.3.9"
     except Exception:
-        return "1.3.4"
+        return "1.3.9"
 
 
 class Settings(BaseSettings):
