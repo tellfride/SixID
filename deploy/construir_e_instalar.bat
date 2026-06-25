@@ -172,6 +172,8 @@ pushd "%BUILD_DIR%"
     --hidden-import=sysid9_agent.actions.command_executor ^
     --hidden-import=sysid9_agent.actions.screen_lock ^
     --hidden-import=sysid9_agent.actions.vnc_manager ^
+    --hidden-import=sysid9_agent.actions.input_blocker ^
+    --hidden-import=sysid9_agent.actions.usb_blocker ^
     --hidden-import=sysid9_agent.collectors ^
     --noconsole ^
     --uac-admin ^

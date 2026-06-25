@@ -4,6 +4,8 @@ import subprocess
 
 from sysid9_agent.actions.screen_lock import lock_screen, unlock_screen
 from sysid9_agent.actions.vnc_manager import start_vnc_service, stop_vnc_service, change_vnc_password
+from sysid9_agent.actions.input_blocker import block_input, unblock_input
+from sysid9_agent.actions.usb_blocker import block_usb, unblock_usb
 
 logger = logging.getLogger("SysID9Agent")
 
@@ -229,50 +231,24 @@ def _handle_change_vnc_password(params: dict) -> dict:
 
 
 def _handle_block_input(params: dict) -> dict:
-    try:
-        ctypes.windll.user32.BlockInput(True)
-        logger.info("Keyboard and mouse blocked")
+    if block_input():
         return {"success": True, "result": "Teclado e mouse bloqueados"}
-    except Exception as e:
-        return {"success": False, "result": f"Falha ao bloquear: {e}"}
+    return {"success": False, "result": "Falha ao bloquear teclado e mouse"}
 
 
 def _handle_unblock_input(params: dict) -> dict:
-    try:
-        ctypes.windll.user32.BlockInput(False)
-        logger.info("Keyboard and mouse unblocked")
+    if unblock_input():
         return {"success": True, "result": "Teclado e mouse desbloqueados"}
-    except Exception as e:
-        return {"success": False, "result": f"Falha ao desbloquear: {e}"}
+    return {"success": False, "result": "Falha ao desbloquear teclado e mouse"}
 
 
 def _handle_block_usb(params: dict) -> dict:
-    try:
-        import winreg
-        key = winreg.OpenKey(
-            winreg.HKEY_LOCAL_MACHINE,
-            r"SYSTEM\CurrentControlSet\Services\USBSTOR",
-            0, winreg.KEY_SET_VALUE,
-        )
-        winreg.SetValueEx(key, "Start", 0, winreg.REG_DWORD, 4)
-        winreg.CloseKey(key)
-        logger.info("USB storage blocked")
+    if block_usb():
         return {"success": True, "result": "Portas USB bloqueadas (pendrives e armazenamento)"}
-    except Exception as e:
-        return {"success": False, "result": f"Falha ao bloquear USB: {e}"}
+    return {"success": False, "result": "Falha ao bloquear USB"}
 
 
 def _handle_unblock_usb(params: dict) -> dict:
-    try:
-        import winreg
-        key = winreg.OpenKey(
-            winreg.HKEY_LOCAL_MACHINE,
-            r"SYSTEM\CurrentControlSet\Services\USBSTOR",
-            0, winreg.KEY_SET_VALUE,
-        )
-        winreg.SetValueEx(key, "Start", 0, winreg.REG_DWORD, 3)
-        winreg.CloseKey(key)
-        logger.info("USB storage unblocked")
+    if unblock_usb():
         return {"success": True, "result": "Portas USB desbloqueadas"}
-    except Exception as e:
-        return {"success": False, "result": f"Falha ao desbloquear USB: {e}"}
+    return {"success": False, "result": "Falha ao desbloquear USB"}
