@@ -19,28 +19,13 @@ const SixiDLogo = ({ collapsed }: { collapsed: boolean }) => (
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
     borderBottom: '1px solid var(--border)',
-    padding: '0 16px',
+    padding: '0 12px',
   }}>
-    <svg width={collapsed ? 28 : 32} height={collapsed ? 28 : 32} viewBox="0 0 40 40" fill="none">
-      <rect width="40" height="40" rx="8" fill="#1565FF" />
-      <path d="M12 14L20 10L28 14L28 22L20 26L12 22Z" fill="rgba(255,255,255,0.2)" stroke="white" strokeWidth="1.5" />
-      <path d="M20 10V26" stroke="white" strokeWidth="1.5" />
-      <path d="M12 14L20 18L28 14" stroke="white" strokeWidth="1.5" />
-      <path d="M20 18V26" stroke="white" strokeWidth="1.5" />
-      <text x="20" y="22" textAnchor="middle" fill="white" fontSize="10" fontWeight="700" fontFamily="Poppins">6</text>
-    </svg>
-    {!collapsed && (
-      <span style={{
-        fontSize: 20,
-        fontWeight: 700,
-        fontFamily: "'Poppins', sans-serif",
-        color: 'var(--text)',
-        letterSpacing: '-0.5px',
-      }}>
-        Sixi<span style={{ color: '#1565FF' }}>D</span>
-      </span>
+    {collapsed ? (
+      <img src="/favicon.png" alt="SixID" style={{ width: 28, height: 28 }} />
+    ) : (
+      <img src="/logo.png" alt="SixID" style={{ height: 36, objectFit: 'contain' }} />
     )}
   </div>
 );
@@ -162,7 +147,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           borderTop: '1px solid var(--border)',
         }}>
           <Text style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
-            SixiD {version ? `v${version}` : ''} — Sistema de Gestao de Ativos e Inventario de TI
+            SixID {version ? `v${version}` : ''} — Sistema de Gestao de Ativos e Inventario de TI
           </Text>
         </div>
       </Layout>

@@ -29,7 +29,7 @@ export default function LoginPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0B1220 0%, #0F1B2E 50%, #0B1220 100%)',
+      background: 'linear-gradient(135deg, #0D0D0D 0%, #1A1A1A 50%, #0D0D0D 100%)',
     }}>
       <Card
         style={{
@@ -42,21 +42,9 @@ export default function LoginPage() {
         styles={{ body: { padding: 48 } }}
       >
         <Space direction="vertical" align="center" style={{ width: '100%', marginBottom: 36 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <svg width={44} height={44} viewBox="0 0 40 40" fill="none">
-              <rect width="40" height="40" rx="8" fill="#1565FF" />
-              <path d="M12 14L20 10L28 14L28 22L20 26L12 22Z" fill="rgba(255,255,255,0.2)" stroke="white" strokeWidth="1.5" />
-              <path d="M20 10V26" stroke="white" strokeWidth="1.5" />
-              <path d="M12 14L20 18L28 14" stroke="white" strokeWidth="1.5" />
-              <path d="M20 18V26" stroke="white" strokeWidth="1.5" />
-              <text x="20" y="22" textAnchor="middle" fill="white" fontSize="10" fontWeight="700" fontFamily="Poppins">6</text>
-            </svg>
-            <Title level={2} style={{ color: '#ffffff', margin: 0, fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}>
-              Sixi<span style={{ color: '#1565FF' }}>D</span>
-            </Title>
-          </div>
+          <img src="/logo.png" alt="SixID" style={{ height: 56, objectFit: 'contain', marginBottom: 8 }} />
           <Text style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-            Sistema de Gestão de Ativos e Inventário de TI
+            Sistema de Gestao de Ativos e Inventario de TI
           </Text>
         </Space>
 

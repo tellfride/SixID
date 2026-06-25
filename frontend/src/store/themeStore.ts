@@ -20,16 +20,16 @@ export const useThemeStore = create<ThemeState>((set) => ({
 export const darkTokens = {
   colorPrimary: '#1565FF',
   borderRadius: 8,
-  colorBgContainer: '#111927',
-  colorBgElevated: '#162032',
-  colorBgLayout: '#0B1220',
+  colorBgContainer: '#1A1A1A',
+  colorBgElevated: '#222222',
+  colorBgLayout: '#0D0D0D',
   fontFamily: "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  colorLink: '#1565FF',
+  colorLink: '#3D8BFF',
   colorSuccess: '#00BFA5',
-  colorText: '#E6EBF1',
+  colorText: '#E6EAF0',
   colorTextSecondary: '#5B6470',
-  colorBorder: '#1E293B',
-  colorBorderSecondary: '#1E293B',
+  colorBorder: '#2A2A2A',
+  colorBorderSecondary: '#2A2A2A',
 };
 
 export const lightTokens = {
@@ -48,13 +48,13 @@ export const lightTokens = {
 };
 
 export const darkComponents = {
-  Menu: { darkItemBg: '#0B1220', darkItemSelectedBg: '#1565FF', darkItemHoverBg: 'rgba(21,101,255,0.15)', darkItemColor: '#8896A6', darkItemSelectedColor: '#ffffff' },
-  Card: { colorBgContainer: '#111927', colorBorderSecondary: '#1E293B' },
-  Table: { colorBgContainer: '#111927', headerBg: '#0F1729', rowHoverBg: 'rgba(21,101,255,0.08)' },
+  Menu: { darkItemBg: '#0D0D0D', darkItemSelectedBg: '#1565FF', darkItemHoverBg: 'rgba(21,101,255,0.15)', darkItemColor: '#8896A6', darkItemSelectedColor: '#ffffff' },
+  Card: { colorBgContainer: '#1A1A1A', colorBorderSecondary: '#2A2A2A' },
+  Table: { colorBgContainer: '#1A1A1A', headerBg: '#141414', rowHoverBg: 'rgba(21,101,255,0.08)' },
   Button: { primaryShadow: '0 2px 8px rgba(21,101,255,0.35)' },
-  Input: { colorBgContainer: '#0F1729', colorBorder: '#1E293B' },
-  Select: { colorBgContainer: '#0F1729', colorBorder: '#1E293B' },
-  Modal: { contentBg: '#111927', headerBg: '#111927' },
+  Input: { colorBgContainer: '#141414', colorBorder: '#2A2A2A' },
+  Select: { colorBgContainer: '#141414', colorBorder: '#2A2A2A' },
+  Modal: { contentBg: '#1A1A1A', headerBg: '#1A1A1A' },
 };
 
 export const lightComponents = {
