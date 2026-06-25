@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, subqueryload
 
 from app.database import get_db
 from app.models.device import Device, DeviceStatus
@@ -63,22 +63,25 @@ def list_devices(
     if os_name:
         query = query.join(DeviceOS, Device.id == DeviceOS.device_id).filter(DeviceOS.name.ilike(f"%{os_name}%"))
 
-    devices = query.order_by(Device.hostname).offset((page - 1) * page_size).limit(page_size).all()
+    devices = (query
+               .options(
+                   subqueryload(Device.os_info),
+                   subqueryload(Device.cpus),
+                   subqueryload(Device.ram),
+               )
+               .order_by(Device.hostname)
+               .offset((page - 1) * page_size).limit(page_size).all())
     result = []
     for d in devices:
         resp = DeviceResponse.model_validate(d)
         resp.location_path = _build_location_path(db, d.room_id)
-        os_info = db.query(DeviceOS).filter(DeviceOS.device_id == d.id).first()
-        cpu_info = db.query(DeviceCPU).filter(DeviceCPU.device_id == d.id, DeviceCPU.model != None).first()
-        if not cpu_info:
-            cpu_info = db.query(DeviceCPU).filter(DeviceCPU.device_id == d.id).first()
-        ram_info = db.query(DeviceRAM).filter(DeviceRAM.device_id == d.id).first()
-        if os_info:
-            resp.os_name = os_info.name
-        if cpu_info:
-            resp.cpu_model = cpu_info.model
-        if ram_info:
-            resp.ram_total_gb = ram_info.total_gb
+        if d.os_info:
+            resp.os_name = d.os_info.name
+        cpu = next((c for c in d.cpus if c.model), d.cpus[0] if d.cpus else None)
+        if cpu:
+            resp.cpu_model = cpu.model
+        if d.ram:
+            resp.ram_total_gb = d.ram.total_gb
         result.append(resp)
     return result
 
@@ -87,13 +90,13 @@ def list_devices(
 def export_devices(db: Session = Depends(get_db), _=Depends(get_current_user)):
     devices = (db.query(Device)
                .options(
-                   joinedload(Device.os_info),
-                   joinedload(Device.cpus),
-                   joinedload(Device.ram),
-                   joinedload(Device.storage),
-                   joinedload(Device.networks),
-                   joinedload(Device.motherboard),
-                   joinedload(Device.bios),
+                   subqueryload(Device.os_info),
+                   subqueryload(Device.cpus),
+                   subqueryload(Device.ram),
+                   subqueryload(Device.storage),
+                   subqueryload(Device.networks),
+                   subqueryload(Device.motherboard),
+                   subqueryload(Device.bios),
                )
                .order_by(Device.hostname).all())
 
@@ -188,17 +191,17 @@ def export_devices(db: Session = Depends(get_db), _=Depends(get_current_user)):
 def get_device(device_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
     device = (db.query(Device)
               .options(
-                  joinedload(Device.os_info),
-                  joinedload(Device.cpus),
-                  joinedload(Device.ram),
-                  joinedload(Device.ram_slots),
-                  joinedload(Device.storage),
-                  joinedload(Device.networks),
-                  joinedload(Device.motherboard),
-                  joinedload(Device.bios),
-                  joinedload(Device.monitors),
-                  joinedload(Device.printers),
-                  joinedload(Device.local_users),
+                  subqueryload(Device.os_info),
+                  subqueryload(Device.cpus),
+                  subqueryload(Device.ram),
+                  subqueryload(Device.ram_slots),
+                  subqueryload(Device.storage),
+                  subqueryload(Device.networks),
+                  subqueryload(Device.motherboard),
+                  subqueryload(Device.bios),
+                  subqueryload(Device.monitors),
+                  subqueryload(Device.printers),
+                  subqueryload(Device.local_users),
               )
               .filter(Device.id == device_id).first())
     if not device:
