@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import TIMEZONE_BR
 from app.database import get_db
 from app.models.device import Device, DeviceStatus
-from app.models.inventory import DeviceOS, DeviceStorage, DeviceRAM, DeviceSoftware
+from app.models.inventory import DeviceOS, DeviceStorage, DeviceRAM, DeviceSoftware, DeviceCPU
 from app.models.tracking import HardwareChange
 from app.models.location import Room, Sector, Branch, Company, Unit
 from app.schemas.dashboard import (
@@ -154,3 +154,108 @@ def get_top_software(limit: int = 10, db: Session = Depends(get_db), _=Depends(g
             .order_by(func.count(DeviceSoftware.id).desc())
             .limit(limit).all())
     return [TopSoftwareItem(name=name, count=count) for name, count in rows]
+
+
+@router.get("/os-details")
+def get_os_details(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    rows = (db.query(DeviceOS.name, func.count(DeviceOS.id))
+            .group_by(DeviceOS.name).order_by(func.count(DeviceOS.id).desc()).all())
+    return [{"os_name": name or "Desconhecido", "count": count} for name, count in rows]
+
+
+@router.get("/os-devices")
+def get_devices_by_os(os_name: str, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    rows = (db.query(Device.id, Device.hostname, Device.current_user, Device.status,
+                     Device.last_seen, DeviceOS.name, DeviceOS.version, DeviceOS.build)
+            .join(DeviceOS, Device.id == DeviceOS.device_id)
+            .filter(DeviceOS.name == os_name)
+            .order_by(Device.hostname).all())
+    return [
+        {"id": r[0], "hostname": r[1], "current_user": r[2], "status": r[3].value if r[3] else "unknown",
+         "last_seen": r[4].isoformat() if r[4] else None,
+         "os_name": r[5], "os_version": r[6], "os_build": r[7]}
+        for r in rows
+    ]
+
+
+@router.get("/hardware-ranking")
+def get_hardware_ranking(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    ram_rows = (db.query(Device.id, Device.hostname, Device.status, DeviceRAM.total_gb)
+                .join(DeviceRAM, Device.id == DeviceRAM.device_id)
+                .filter(DeviceRAM.total_gb != None)
+                .order_by(DeviceRAM.total_gb.desc()).all())
+    ram_ranking = [
+        {"id": r[0], "hostname": r[1], "status": r[2].value if r[2] else "unknown", "ram_gb": round(r[3], 1)}
+        for r in ram_rows
+    ]
+
+    storage_rows = (db.query(Device.id, Device.hostname, DeviceStorage.media_type,
+                             DeviceStorage.model, DeviceStorage.capacity_gb)
+                    .join(DeviceStorage, Device.id == DeviceStorage.device_id)
+                    .filter(DeviceStorage.capacity_gb != None)
+                    .order_by(DeviceStorage.capacity_gb.desc()).all())
+    storage_ranking = [
+        {"id": r[0], "hostname": r[1], "media_type": r[2] or "HDD",
+         "model": r[3] or "-", "capacity_gb": round(r[4], 1)}
+        for r in storage_rows
+    ]
+
+    return {"ram": ram_ranking, "storage": storage_ranking}
+
+
+@router.get("/devices-by-ram")
+def get_devices_by_ram(ram_label: str, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    ranges = {"≤4 GB": (0, 4.9), "8 GB": (5, 8.9), "16 GB": (9, 16.9), "32 GB": (17, 32.9), "64+ GB": (33, 99999)}
+    low, high = ranges.get(ram_label, (0, 99999))
+    rows = (db.query(Device.id, Device.hostname, Device.current_user, Device.status,
+                     Device.last_seen, DeviceRAM.total_gb)
+            .join(DeviceRAM, Device.id == DeviceRAM.device_id)
+            .filter(DeviceRAM.total_gb >= low, DeviceRAM.total_gb <= high)
+            .order_by(Device.hostname).all())
+    return [
+        {"id": r[0], "hostname": r[1], "current_user": r[2],
+         "status": r[3].value if r[3] else "unknown",
+         "last_seen": r[4].isoformat() if r[4] else None,
+         "ram_gb": round(r[5], 1)}
+        for r in rows
+    ]
+
+
+@router.get("/devices-by-storage-type")
+def get_devices_by_storage_type(media_type: str, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    rows = (db.query(Device.id, Device.hostname, Device.current_user, Device.status,
+                     DeviceStorage.model, DeviceStorage.capacity_gb, DeviceStorage.used_gb,
+                     DeviceStorage.free_gb, DeviceStorage.health, DeviceStorage.media_type)
+            .join(DeviceStorage, Device.id == DeviceStorage.device_id)
+            .filter(DeviceStorage.media_type == media_type)
+            .order_by(Device.hostname).all())
+    return [
+        {"id": r[0], "hostname": r[1], "current_user": r[2],
+         "status": r[3].value if r[3] else "unknown",
+         "model": r[4] or "-", "capacity_gb": round(r[5] or 0, 1),
+         "used_gb": round(r[6] or 0, 1), "free_gb": round(r[7] or 0, 1),
+         "health": r[8] or "-", "media_type": r[9] or "-"}
+        for r in rows
+    ]
+
+
+@router.get("/storage-capacity")
+def get_storage_capacity(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    rows = (db.query(Device.id, Device.hostname, DeviceStorage.media_type,
+                     DeviceStorage.model, DeviceStorage.capacity_gb,
+                     DeviceStorage.used_gb, DeviceStorage.free_gb, DeviceStorage.health)
+            .join(DeviceStorage, Device.id == DeviceStorage.device_id)
+            .filter(DeviceStorage.capacity_gb != None, DeviceStorage.capacity_gb > 0)
+            .order_by(DeviceStorage.capacity_gb.desc()).all())
+    result = []
+    for r in rows:
+        capacity = r[4] or 0
+        used = r[5] or 0
+        usage_pct = round((used / capacity) * 100, 1) if capacity > 0 else 0
+        result.append({
+            "id": r[0], "hostname": r[1], "media_type": r[2] or "HDD",
+            "model": r[3] or "-", "capacity_gb": round(capacity, 1),
+            "used_gb": round(used, 1), "free_gb": round(r[6] or 0, 1),
+            "usage_pct": usage_pct, "health": r[7] or "-",
+        })
+    return result

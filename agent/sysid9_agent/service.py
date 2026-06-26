@@ -117,7 +117,7 @@ def install_service():
 
     subprocess.run(
         ["sc", "description", "SysID9Agent",
-         "SysID9 - Agente de Inventario e Monitoramento de Ativos de TI"],
+         "SysID9 - Agente de Inventário e Monitoramento de Ativos de TI"],
         capture_output=True, timeout=10,
     )
 

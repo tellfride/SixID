@@ -53,6 +53,18 @@ export const getDiskHealth = () =>
   api.get<{ hostname: string; model: string; capacity_gb: number; health: string; media_type: string }[]>('/dashboard/disk-health');
 export const getTopSoftware = (limit = 10) =>
   api.get<{ name: string; count: number }[]>('/dashboard/top-software', { params: { limit } });
+export const getOsDetails = () =>
+  api.get<{ os_name: string; count: number }[]>('/dashboard/os-details');
+export const getDevicesByOs = (osName: string) =>
+  api.get<any[]>('/dashboard/os-devices', { params: { os_name: osName } });
+export const getHardwareRanking = () =>
+  api.get<{ ram: any[]; storage: any[] }>('/dashboard/hardware-ranking');
+export const getDevicesByRam = (ramLabel: string) =>
+  api.get<any[]>('/dashboard/devices-by-ram', { params: { ram_label: ramLabel } });
+export const getDevicesByStorageType = (mediaType: string) =>
+  api.get<any[]>('/dashboard/devices-by-storage-type', { params: { media_type: mediaType } });
+export const getStorageCapacity = () =>
+  api.get<any[]>('/dashboard/storage-capacity');
 
 // Locations
 export const getLocationTree = () =>
@@ -89,3 +101,35 @@ export const sendCommand = (deviceId: number, command: string, params?: Record<s
 // Audit
 export const getAuditLogs = (params?: Record<string, string | number>) =>
   api.get<AuditLog[]>('/audit/logs/', { params });
+
+// Printers
+export const getPrinters = (activeOnly = true) =>
+  api.get<any[]>('/printers/', { params: { active_only: activeOnly } });
+export const createPrinter = (data: Record<string, any>) =>
+  api.post('/printers/', data);
+export const updatePrinter = (id: number, data: Record<string, any>) =>
+  api.put(`/printers/${id}`, data);
+export const deletePrinter = (id: number) =>
+  api.delete(`/printers/${id}`);
+export const pingPrinter = (id: number) =>
+  api.post<{ ip: string; online: boolean; output: string }>(`/printers/${id}/ping`);
+export const collectPrinterCounter = (id: number) =>
+  api.post(`/printers/${id}/collect`);
+export const collectAllCounters = () =>
+  api.post('/printers/collect-all');
+export const getPrinterHistory = (id: number) =>
+  api.get<any[]>(`/printers/${id}/history`);
+export const getPrinterRanking = (top = 10) =>
+  api.get<{ most: any[]; least: any[] }>('/printers/ranking', { params: { top } });
+export const registerTonerChange = (id: number, data: { toner_model: string; pages_at_change?: number; notes?: string }) =>
+  api.post(`/printers/${id}/toner-change`, data);
+export const getTonerHistory = (id: number) =>
+  api.get<any[]>(`/printers/${id}/toner-history`);
+export const getTonerStock = () =>
+  api.get<any[]>('/printers/stock');
+export const createTonerStock = (data: { toner_model: string; quantity: number; min_quantity?: number }) =>
+  api.post('/printers/stock', data);
+export const restockToner = (data: { toner_model: string; quantity: number; notes?: string }) =>
+  api.post('/printers/stock/restock', data);
+export const getStockLogs = (params?: Record<string, any>) =>
+  api.get<any[]>('/printers/stock/logs', { params });

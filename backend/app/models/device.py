@@ -1,3 +1,4 @@
+from datetime import datetime
 import enum
 from datetime import datetime
 
@@ -5,6 +6,7 @@ from sqlalchemy import String, Enum, DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.config import TIMEZONE_BR
 
 
 class DeviceStatus(str, enum.Enum):
@@ -26,8 +28,8 @@ class Device(Base):
     agent_version: Mapped[str | None] = mapped_column(String(50))
     room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id", ondelete="SET NULL"))
     responsible_person_id: Mapped[int | None] = mapped_column(ForeignKey("responsible_persons.id", ondelete="SET NULL"))
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     os_info: Mapped["DeviceOS | None"] = relationship(back_populates="device", cascade="all, delete-orphan", uselist=False)
     cpus: Mapped[list["DeviceCPU"]] = relationship(back_populates="device", cascade="all, delete-orphan")

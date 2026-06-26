@@ -1,9 +1,11 @@
 from datetime import datetime
+from datetime import datetime
 
 from sqlalchemy import String, Integer, Text, Boolean, ForeignKey, DateTime, func, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.config import TIMEZONE_BR
 
 
 class HardwareChange(Base):
@@ -15,7 +17,7 @@ class HardwareChange(Base):
     field_name: Mapped[str] = mapped_column(String(100))
     old_value: Mapped[str | None] = mapped_column(Text)
     new_value: Mapped[str | None] = mapped_column(Text)
-    detected_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    detected_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="hardware_changes")
 
@@ -30,7 +32,7 @@ class AuditLog(Base):
     target_id: Mapped[int | None] = mapped_column(Integer)
     details: Mapped[dict | None] = mapped_column(JSON)
     ip_address: Mapped[str | None] = mapped_column(String(45))
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), index=True)
 
     user = relationship("User")
 
@@ -42,7 +44,7 @@ class RemoteSession(Base):
     device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     session_type: Mapped[str] = mapped_column(String(20))
-    started_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     device = relationship("Device")
@@ -57,7 +59,7 @@ class PendingCommand(Base):
     command: Mapped[str] = mapped_column(String(100))
     params: Mapped[dict | None] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, sent, completed
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR))
     result: Mapped[str | None] = mapped_column(Text)
 
     device = relationship("Device")
@@ -72,7 +74,7 @@ class ScreenLock(Base):
     message: Mapped[str | None] = mapped_column(Text)
     unlock_password_hash: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device")
     user = relationship("User")

@@ -8,7 +8,7 @@ from app.database import engine, Base, SessionLocal
 from app.models import *  # noqa: F401,F403
 from app.models.user import User, UserRole
 from app.utils.security import hash_password
-from app.api import auth, users, devices, agent, locations, remote, dashboard, audit
+from app.api import auth, users, devices, agent, locations, remote, dashboard, audit, printers
 from app.websocket.routes import router as ws_router
 
 
@@ -60,6 +60,7 @@ app.include_router(locations.router)
 app.include_router(remote.router)
 app.include_router(dashboard.router)
 app.include_router(audit.router)
+app.include_router(printers.router)
 app.include_router(ws_router)
 
 

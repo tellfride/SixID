@@ -1,9 +1,11 @@
 from datetime import datetime
+from datetime import datetime
 
 from sqlalchemy import String, Integer, Float, ForeignKey, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.config import TIMEZONE_BR
 
 
 class DeviceOS(Base):
@@ -16,7 +18,7 @@ class DeviceOS(Base):
     build: Mapped[str | None] = mapped_column(String(100))
     architecture: Mapped[str | None] = mapped_column(String(20))
     product_key: Mapped[str | None] = mapped_column(String(255))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="os_info")
 
@@ -31,7 +33,7 @@ class DeviceCPU(Base):
     cores: Mapped[int | None] = mapped_column(Integer)
     threads: Mapped[int | None] = mapped_column(Integer)
     frequency_mhz: Mapped[int | None] = mapped_column(Integer)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="cpus")
 
@@ -44,7 +46,7 @@ class DeviceRAM(Base):
     total_gb: Mapped[float | None] = mapped_column(Float)
     used_gb: Mapped[float | None] = mapped_column(Float)
     free_gb: Mapped[float | None] = mapped_column(Float)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="ram")
 
@@ -59,7 +61,7 @@ class DeviceRAMSlot(Base):
     type: Mapped[str | None] = mapped_column(String(50))
     speed_mhz: Mapped[int | None] = mapped_column(Integer)
     manufacturer: Mapped[str | None] = mapped_column(String(255))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="ram_slots")
 
@@ -76,7 +78,7 @@ class DeviceStorage(Base):
     used_gb: Mapped[float | None] = mapped_column(Float)
     free_gb: Mapped[float | None] = mapped_column(Float)
     health: Mapped[str | None] = mapped_column(String(50))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="storage")
 
@@ -92,7 +94,7 @@ class DeviceNetwork(Base):
     gateway: Mapped[str | None] = mapped_column(String(45))
     dns: Mapped[str | None] = mapped_column(String(500))
     adapter_type: Mapped[str | None] = mapped_column(String(50))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="networks")
 
@@ -105,7 +107,7 @@ class DeviceMotherboard(Base):
     manufacturer: Mapped[str | None] = mapped_column(String(255))
     model: Mapped[str | None] = mapped_column(String(255))
     serial: Mapped[str | None] = mapped_column(String(255))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="motherboard")
 
@@ -118,7 +120,7 @@ class DeviceBIOS(Base):
     manufacturer: Mapped[str | None] = mapped_column(String(255))
     version: Mapped[str | None] = mapped_column(String(255))
     date: Mapped[str | None] = mapped_column(String(50))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="bios")
 
@@ -131,7 +133,7 @@ class DeviceMonitor(Base):
     manufacturer: Mapped[str | None] = mapped_column(String(255))
     model: Mapped[str | None] = mapped_column(String(255))
     serial: Mapped[str | None] = mapped_column(String(255))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="monitors")
 
@@ -145,7 +147,7 @@ class DevicePrinter(Base):
     driver: Mapped[str | None] = mapped_column(String(255))
     port: Mapped[str | None] = mapped_column(String(255))
     is_default: Mapped[bool | None] = mapped_column(default=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="printers")
 
@@ -159,7 +161,7 @@ class DeviceSoftware(Base):
     version: Mapped[str | None] = mapped_column(String(100))
     publisher: Mapped[str | None] = mapped_column(String(255))
     install_date: Mapped[str | None] = mapped_column(String(50))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="software")
 
@@ -173,7 +175,7 @@ class DeviceService(Base):
     display_name: Mapped[str | None] = mapped_column(String(255))
     status: Mapped[str | None] = mapped_column(String(50))
     start_type: Mapped[str | None] = mapped_column(String(50))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="services")
 
@@ -191,6 +193,6 @@ class DeviceLocalUser(Base):
     domain: Mapped[str | None] = mapped_column(String(255))
     last_logon: Mapped[str | None] = mapped_column(String(100))
     profile_path: Mapped[str | None] = mapped_column(String(500))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
 
     device = relationship("Device", back_populates="local_users")

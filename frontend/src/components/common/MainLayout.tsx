@@ -5,7 +5,7 @@ import {
   DashboardOutlined, DesktopOutlined, EnvironmentOutlined,
   UserOutlined, AuditOutlined, LogoutOutlined, MenuFoldOutlined,
   MenuUnfoldOutlined, SearchOutlined, DatabaseOutlined, KeyOutlined,
-  SunOutlined, MoonOutlined,
+  SunOutlined, MoonOutlined, LaptopOutlined, PrinterOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
@@ -47,7 +47,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     { key: '/', icon: <DashboardOutlined />, label: 'Dashboard' },
     { key: '/devices', icon: <DesktopOutlined />, label: 'Ativos' },
     { key: '/inventory', icon: <DatabaseOutlined />, label: 'Inventário' },
+    { key: '/hardware', icon: <LaptopOutlined />, label: 'Hardware e SO' },
     { key: '/locations', icon: <EnvironmentOutlined />, label: 'Localizações' },
+    { key: '/printers', icon: <PrinterOutlined />, label: 'Impressoras' },
     ...(user?.role === 'admin' ? [
       { key: '/user-mgmt', icon: <KeyOutlined />, label: 'Senhas Remotas' },
       { key: '/users', icon: <UserOutlined />, label: 'Usuários' },
@@ -147,7 +149,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           borderTop: '1px solid var(--border)',
         }}>
           <Text style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
-            SixID {version ? `v${version}` : ''} — Sistema de Gestao de Ativos e Inventario de TI
+            SixID {version ? `v${version}` : ''} — Sistema de Gestão de Ativos e Inventário de TI
           </Text>
         </div>
       </Layout>

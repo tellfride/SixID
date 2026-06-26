@@ -44,7 +44,7 @@ export default function LoginPage() {
         <Space direction="vertical" align="center" style={{ width: '100%', marginBottom: 36 }}>
           <img src="/logo.png" alt="SixID" style={{ height: 56, objectFit: 'contain', marginBottom: 8 }} />
           <Text style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-            Sistema de Gestao de Ativos e Inventario de TI
+            Sistema de Gestão de Ativos e Inventário de TI
           </Text>
         </Space>
 

@@ -7,6 +7,7 @@ from app.models.inventory import (
     DevicePrinter, DeviceSoftware, DeviceService, DeviceLocalUser,
 )
 from app.models.tracking import HardwareChange, AuditLog, RemoteSession, ScreenLock, PendingCommand
+from app.models.printer import Printer, PrinterCounter, TonerChange, TonerStock, TonerStockLog
 
 __all__ = [
     "User",
@@ -16,4 +17,5 @@ __all__ = [
     "DeviceNetwork", "DeviceMotherboard", "DeviceBIOS", "DeviceMonitor",
     "DevicePrinter", "DeviceSoftware", "DeviceService", "DeviceLocalUser",
     "HardwareChange", "AuditLog", "RemoteSession", "ScreenLock", "PendingCommand",
+    "Printer", "PrinterCounter", "TonerChange", "TonerStock", "TonerStockLog",
 ]

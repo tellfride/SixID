@@ -71,13 +71,13 @@ def install(server_url, api_key, progress_callback=None):
     server_url = normalize_url(server_url)
 
     try:
-        log(f"Testando conexao com {server_url}...")
+        log(f"Testando conexão com {server_url}...")
         try:
             import urllib.request
             urllib.request.urlopen(server_url + "/api/health", timeout=5)
             log("Servidor encontrado!")
         except Exception:
-            log("AVISO: Servidor nao acessivel. O agente tentara conectar depois.")
+            log("AVISO: Servidor não acessível. O agente tentará conectar depois.")
 
         existing_agent_id = _read_existing_agent_id()
         if existing_agent_id:
