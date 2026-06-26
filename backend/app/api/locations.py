@@ -5,9 +5,12 @@ from app.database import get_db
 from app.models.location import Unit, Company, Branch, Sector, Room, ResponsiblePerson
 from app.models.user import UserRole
 from app.schemas.location import (
-    UnitCreate, UnitResponse, CompanyCreate, CompanyResponse,
-    BranchCreate, BranchResponse, SectorCreate, SectorResponse,
-    RoomCreate, RoomResponse, ResponsibleCreate, ResponsibleResponse,
+    UnitCreate, UnitResponse, UnitUpdate,
+    CompanyCreate, CompanyResponse, CompanyUpdate,
+    BranchCreate, BranchResponse, BranchUpdate,
+    SectorCreate, SectorResponse, SectorUpdate,
+    RoomCreate, RoomResponse, RoomUpdate,
+    ResponsibleCreate, ResponsibleResponse,
     LocationTreeNode,
 )
 from app.utils.security import require_role
@@ -64,6 +67,17 @@ def create_unit(data: UnitCreate, db: Session = Depends(get_db), _=Depends(requi
     db.refresh(obj)
     return obj
 
+@router.put("/units/{unit_id}", response_model=UnitResponse)
+def update_unit(unit_id: int, data: UnitUpdate, db: Session = Depends(get_db), _=Depends(require_role(UserRole.TECHNICIAN))):
+    obj = db.query(Unit).filter(Unit.id == unit_id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Não encontrado")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(obj, field, value)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
 @router.delete("/units/{unit_id}", status_code=204)
 def delete_unit(unit_id: int, db: Session = Depends(get_db), _=Depends(require_role(UserRole.ADMIN))):
     obj = db.query(Unit).filter(Unit.id == unit_id).first()
@@ -85,6 +99,17 @@ def list_companies(unit_id: int | None = None, db: Session = Depends(get_db), _=
 def create_company(data: CompanyCreate, db: Session = Depends(get_db), _=Depends(require_role(UserRole.TECHNICIAN))):
     obj = Company(**data.model_dump())
     db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+@router.put("/companies/{company_id}", response_model=CompanyResponse)
+def update_company(company_id: int, data: CompanyUpdate, db: Session = Depends(get_db), _=Depends(require_role(UserRole.TECHNICIAN))):
+    obj = db.query(Company).filter(Company.id == company_id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Não encontrado")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(obj, field, value)
     db.commit()
     db.refresh(obj)
     return obj
@@ -114,6 +139,17 @@ def create_branch(data: BranchCreate, db: Session = Depends(get_db), _=Depends(r
     db.refresh(obj)
     return obj
 
+@router.put("/branches/{branch_id}", response_model=BranchResponse)
+def update_branch(branch_id: int, data: BranchUpdate, db: Session = Depends(get_db), _=Depends(require_role(UserRole.TECHNICIAN))):
+    obj = db.query(Branch).filter(Branch.id == branch_id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Não encontrado")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(obj, field, value)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
 @router.delete("/branches/{branch_id}", status_code=204)
 def delete_branch(branch_id: int, db: Session = Depends(get_db), _=Depends(require_role(UserRole.ADMIN))):
     obj = db.query(Branch).filter(Branch.id == branch_id).first()
@@ -139,6 +175,17 @@ def create_sector(data: SectorCreate, db: Session = Depends(get_db), _=Depends(r
     db.refresh(obj)
     return obj
 
+@router.put("/sectors/{sector_id}", response_model=SectorResponse)
+def update_sector(sector_id: int, data: SectorUpdate, db: Session = Depends(get_db), _=Depends(require_role(UserRole.TECHNICIAN))):
+    obj = db.query(Sector).filter(Sector.id == sector_id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Não encontrado")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(obj, field, value)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
 @router.delete("/sectors/{sector_id}", status_code=204)
 def delete_sector(sector_id: int, db: Session = Depends(get_db), _=Depends(require_role(UserRole.ADMIN))):
     obj = db.query(Sector).filter(Sector.id == sector_id).first()
@@ -160,6 +207,17 @@ def list_rooms(sector_id: int | None = None, db: Session = Depends(get_db), _=De
 def create_room(data: RoomCreate, db: Session = Depends(get_db), _=Depends(require_role(UserRole.TECHNICIAN))):
     obj = Room(**data.model_dump())
     db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+@router.put("/rooms/{room_id}", response_model=RoomResponse)
+def update_room(room_id: int, data: RoomUpdate, db: Session = Depends(get_db), _=Depends(require_role(UserRole.TECHNICIAN))):
+    obj = db.query(Room).filter(Room.id == room_id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Não encontrado")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(obj, field, value)
     db.commit()
     db.refresh(obj)
     return obj

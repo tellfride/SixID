@@ -138,6 +138,9 @@ export default function DeviceDetailPage() {
   };
 
   const handleOpenLocationModal = async () => {
+    if (device?.room_id) {
+      setSelectedRoomId(device.room_id);
+    }
     setLocationModalOpen(true);
     try {
       const { data } = await getRoomsFlat();

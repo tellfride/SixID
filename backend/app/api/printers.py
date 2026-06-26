@@ -1,7 +1,11 @@
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
+from io import BytesIO
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -256,6 +260,126 @@ def _collect_snmp_toner(printer: Printer) -> int | None:
     if val and val.lstrip("-").isdigit():
         return int(val)
     return None
+
+
+# ── Dashboard Stats ──
+
+@router.get("/dashboard-stats")
+def get_printer_dashboard(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    printers = db.query(Printer).filter(Printer.is_active == True).all()
+
+    total_pages = 0
+    total_toner_changes = 0
+    pages_per_printer = []
+    toner_per_printer = []
+
+    for p in printers:
+        last_counter = (db.query(PrinterCounter).filter(PrinterCounter.printer_id == p.id)
+                        .order_by(PrinterCounter.collected_at.desc()).first())
+        effective = max((last_counter.total_pages if last_counter else 0) - p.initial_counter, 0)
+        total_pages += effective
+
+        toner_count = db.query(func.count(TonerChange.id)).filter(TonerChange.printer_id == p.id).scalar() or 0
+        total_toner_changes += toner_count
+
+        pages_per_printer.append({"name": p.name, "pages": effective, "id": p.id})
+        toner_per_printer.append({"name": p.name, "toner_changes": toner_count, "id": p.id})
+
+    # Toner models consumed
+    toner_models = (db.query(TonerChange.toner_model, func.count(TonerChange.id))
+                    .group_by(TonerChange.toner_model)
+                    .order_by(func.count(TonerChange.id).desc()).all())
+    toner_by_model = [{"model": m, "count": c} for m, c in toner_models]
+
+    # Monthly pages (last 12 months from counters)
+    monthly = (db.query(
+        func.strftime('%Y-%m', PrinterCounter.collected_at).label('month'),
+        func.max(PrinterCounter.total_pages).label('max_pages'),
+        PrinterCounter.printer_id,
+    ).group_by('month', PrinterCounter.printer_id)
+     .order_by('month').all())
+
+    months_data: dict[str, int] = {}
+    prev_by_printer: dict[int, int] = {}
+    for month, max_pages, pid in monthly:
+        if pid in prev_by_printer:
+            diff = max(max_pages - prev_by_printer[pid], 0)
+            months_data[month] = months_data.get(month, 0) + diff
+        prev_by_printer[pid] = max_pages
+
+    monthly_chart = [{"month": m, "pages": p} for m, p in sorted(months_data.items())]
+
+    # Stock summary
+    stocks = db.query(TonerStock).all()
+    total_stock = sum(s.quantity for s in stocks)
+    low_stock_count = sum(1 for s in stocks if s.quantity <= s.min_quantity)
+
+    # ── Consumption by period (daily, weekly, monthly) ──
+    now = datetime.now(TIMEZONE_BR)
+
+    def _pages_in_period(since: datetime) -> list[dict]:
+        rows = (db.query(
+            func.strftime('%Y-%m-%d', PrinterCounter.collected_at).label('day'),
+            func.max(PrinterCounter.total_pages),
+            func.min(PrinterCounter.total_pages),
+            PrinterCounter.printer_id,
+        ).filter(PrinterCounter.collected_at >= since)
+         .group_by('day', PrinterCounter.printer_id)
+         .order_by('day').all())
+
+        daily: dict[str, int] = {}
+        for day, max_p, min_p, pid in rows:
+            daily[day] = daily.get(day, 0) + max(max_p - min_p, 0)
+        return [{"date": d, "pages": p} for d, p in sorted(daily.items())]
+
+    def _toners_in_period(since: datetime) -> list[dict]:
+        rows = (db.query(
+            func.strftime('%Y-%m-%d', TonerChange.changed_at).label('day'),
+            func.count(TonerChange.id),
+        ).filter(TonerChange.changed_at >= since)
+         .group_by('day').order_by('day').all())
+        return [{"date": d, "count": c} for d, c in rows]
+
+    daily_pages = _pages_in_period(now - timedelta(days=7))
+    weekly_pages = _pages_in_period(now - timedelta(days=30))
+    monthly_pages_detail = _pages_in_period(now - timedelta(days=90))
+
+    daily_toners = _toners_in_period(now - timedelta(days=7))
+    weekly_toners = _toners_in_period(now - timedelta(days=30))
+    monthly_toners = _toners_in_period(now - timedelta(days=90))
+
+    # Summary cards
+    pages_today = sum(r["pages"] for r in daily_pages if r["date"] == now.strftime('%Y-%m-%d'))
+    pages_week = sum(r["pages"] for r in daily_pages)
+    pages_month = sum(r["pages"] for r in weekly_pages)
+
+    toners_today = sum(r["count"] for r in daily_toners if r["date"] == now.strftime('%Y-%m-%d'))
+    toners_week = sum(r["count"] for r in daily_toners)
+    toners_month = sum(r["count"] for r in weekly_toners)
+
+    return {
+        "total_printers": len(printers),
+        "total_pages": total_pages,
+        "total_toner_changes": total_toner_changes,
+        "total_stock": total_stock,
+        "low_stock_count": low_stock_count,
+        "pages_per_printer": sorted(pages_per_printer, key=lambda x: x["pages"], reverse=True),
+        "toner_per_printer": sorted(toner_per_printer, key=lambda x: x["toner_changes"], reverse=True),
+        "toner_by_model": toner_by_model,
+        "monthly_pages": monthly_chart,
+        "pages_today": pages_today,
+        "pages_week": pages_week,
+        "pages_month": pages_month,
+        "toners_today": toners_today,
+        "toners_week": toners_week,
+        "toners_month": toners_month,
+        "daily_pages_chart": daily_pages,
+        "weekly_pages_chart": weekly_pages,
+        "monthly_pages_chart": monthly_pages_detail,
+        "daily_toners_chart": daily_toners,
+        "weekly_toners_chart": weekly_toners,
+        "monthly_toners_chart": monthly_toners,
+    }
 
 
 # ── Ping ──
@@ -570,5 +694,68 @@ def get_stock_logs(
         "id": l.id, "toner_model": l.toner_model, "action": l.action,
         "quantity": l.quantity, "user": l.user.username if l.user else "-",
         "printer": l.printer.name if l.printer else None,
+        "printer_number": l.printer.printer_number if l.printer else None,
+        "printer_location": l.printer.location if l.printer else None,
+        "printer_sector": l.printer.sector if l.printer else None,
         "notes": l.notes, "created_at": l.created_at.isoformat(),
     } for l in logs]
+
+
+@router.get("/stock/export")
+def export_toner_logs(
+    db: Session = Depends(get_db), _=Depends(get_current_user),
+):
+    logs = (db.query(TonerStockLog)
+            .order_by(TonerStockLog.created_at.desc()).all())
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Dispensação de Toner"
+
+    headers = ["Data/Hora", "Ação", "Modelo Toner", "Qtd", "Impressora", "Nº Impressora",
+               "Local", "Setor", "Operador", "Observações"]
+    hdr_font = Font(bold=True, color="FFFFFF")
+    hdr_fill = PatternFill(start_color="7C3AED", end_color="7C3AED", fill_type="solid")
+    thin = Border(left=Side(style="thin"), right=Side(style="thin"),
+                  top=Side(style="thin"), bottom=Side(style="thin"))
+
+    for ci, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=ci, value=h)
+        cell.font = hdr_font
+        cell.fill = hdr_fill
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = thin
+
+    for ri, l in enumerate(logs, 2):
+        row = [
+            l.created_at.strftime("%d/%m/%Y %H:%M") if l.created_at else "",
+            l.action or "",
+            l.toner_model or "",
+            l.quantity,
+            l.printer.name if l.printer else "",
+            l.printer.printer_number if l.printer else "",
+            l.printer.location if l.printer else "",
+            l.printer.sector if l.printer else "",
+            l.user.username if l.user else "",
+            l.notes or "",
+        ]
+        for ci, val in enumerate(row, 1):
+            cell = ws.cell(row=ri, column=ci, value=val)
+            cell.border = thin
+
+    for ci in range(1, len(headers) + 1):
+        max_len = max(
+            (len(str(ws.cell(row=r, column=ci).value or "")) for r in range(1, ws.max_row + 1)),
+            default=10,
+        )
+        ws.column_dimensions[ws.cell(row=1, column=ci).column_letter].width = min(max_len + 3, 40)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=dispensacao_toner_{datetime.now().strftime('%Y%m%d')}.xlsx"},
+    )

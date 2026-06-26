@@ -89,6 +89,33 @@ class ResponsibleResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class UnitUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+
+class CompanyUpdate(BaseModel):
+    name: str | None = None
+    unit_id: int | None = None
+
+
+class BranchUpdate(BaseModel):
+    name: str | None = None
+    address: str | None = None
+    company_id: int | None = None
+
+
+class SectorUpdate(BaseModel):
+    name: str | None = None
+    floor: str | None = None
+    branch_id: int | None = None
+
+
+class RoomUpdate(BaseModel):
+    name: str | None = None
+    sector_id: int | None = None
+
+
 class LocationTreeNode(BaseModel):
     id: int
     name: str

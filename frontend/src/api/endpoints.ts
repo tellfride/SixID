@@ -76,15 +76,25 @@ export const getSectors = (branchId?: number) => api.get('/locations/sectors', {
 export const getRooms = (sectorId?: number) => api.get('/locations/rooms', { params: sectorId ? { sector_id: sectorId } : {} });
 export const createUnit = (data: { name: string; description?: string }) =>
   api.post('/locations/units', data);
+export const updateUnit = (id: number, data: { name?: string; description?: string }) =>
+  api.put(`/locations/units/${id}`, data);
 export const deleteUnit = (id: number) => api.delete(`/locations/units/${id}`);
 export const createCompany = (data: { name: string; unit_id: number }) =>
   api.post('/locations/companies', data);
+export const updateCompany = (id: number, data: Record<string, any>) =>
+  api.put(`/locations/companies/${id}`, data);
 export const createBranch = (data: { name: string; address?: string; company_id: number }) =>
   api.post('/locations/branches', data);
+export const updateBranch = (id: number, data: Record<string, any>) =>
+  api.put(`/locations/branches/${id}`, data);
 export const createSector = (data: { name: string; floor?: string; branch_id: number }) =>
   api.post('/locations/sectors', data);
+export const updateSector = (id: number, data: Record<string, any>) =>
+  api.put(`/locations/sectors/${id}`, data);
 export const createRoom = (data: { name: string; sector_id: number }) =>
   api.post('/locations/rooms', data);
+export const updateRoom = (id: number, data: Record<string, any>) =>
+  api.put(`/locations/rooms/${id}`, data);
 export const getRoomsFlat = () =>
   api.get<{id: number; full_path: string}[]>('/locations/rooms-flat');
 
@@ -103,6 +113,8 @@ export const getAuditLogs = (params?: Record<string, string | number>) =>
   api.get<AuditLog[]>('/audit/logs/', { params });
 
 // Printers
+export const getPrinterDashboard = () =>
+  api.get<any>('/printers/dashboard-stats');
 export const getPrinters = (activeOnly = true) =>
   api.get<any[]>('/printers/', { params: { active_only: activeOnly } });
 export const createPrinter = (data: Record<string, any>) =>
@@ -133,3 +145,4 @@ export const restockToner = (data: { toner_model: string; quantity: number; note
   api.post('/printers/stock/restock', data);
 export const getStockLogs = (params?: Record<string, any>) =>
   api.get<any[]>('/printers/stock/logs', { params });
+export const exportTonerLogs = () => '/printers/stock/export';
