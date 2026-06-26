@@ -194,15 +194,17 @@ def _handle_disable_user(params: dict) -> dict:
     if not username:
         return {"success": False, "result": "Username is required"}
 
+    logger.info(f"Disabling user '{username}'...")
     result = subprocess.run(
-        ["net", "user", username, "/active:no"],
-        capture_output=True, text=True, timeout=15,
+        "net user " + username + " /active:no",
+        shell=True, capture_output=True, text=True, timeout=15,
     )
+    logger.info(f"net user disable: exit={result.returncode} stdout={result.stdout.strip()} stderr={result.stderr.strip()}")
     if result.returncode != 0:
         return {"success": False, "result": result.stderr.strip() or result.stdout.strip()}
 
     logger.info(f"User '{username}' disabled")
-    return {"success": True, "result": f"Usuário '{username}' desabilitado com sucesso"}
+    return {"success": True, "result": f"Usuario '{username}' desabilitado com sucesso"}
 
 
 def _handle_enable_user(params: dict) -> dict:
@@ -210,15 +212,17 @@ def _handle_enable_user(params: dict) -> dict:
     if not username:
         return {"success": False, "result": "Username is required"}
 
+    logger.info(f"Enabling user '{username}'...")
     result = subprocess.run(
-        ["net", "user", username, "/active:yes"],
-        capture_output=True, text=True, timeout=15,
+        "net user " + username + " /active:yes",
+        shell=True, capture_output=True, text=True, timeout=15,
     )
+    logger.info(f"net user enable: exit={result.returncode} stdout={result.stdout.strip()} stderr={result.stderr.strip()}")
     if result.returncode != 0:
         return {"success": False, "result": result.stderr.strip() or result.stdout.strip()}
 
     logger.info(f"User '{username}' enabled")
-    return {"success": True, "result": f"Usuário '{username}' habilitado com sucesso"}
+    return {"success": True, "result": f"Usuario '{username}' habilitado com sucesso"}
 
 
 def _handle_change_vnc_password(params: dict) -> dict:

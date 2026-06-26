@@ -128,6 +128,7 @@ export default function DevicesPage() {
               value={statusFilter}
               onChange={setStatusFilter}
               options={[
+                { value: '', label: 'Todos' },
                 { value: 'online', label: 'Online' },
                 { value: 'offline', label: 'Offline' },
                 { value: 'unknown', label: 'Desconhecido' },

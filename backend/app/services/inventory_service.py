@@ -44,7 +44,15 @@ def process_heartbeat(db: Session, agent_id: str, current_user: str | None, host
     return True
 
 
+TRACKED_COMPONENTS = {"system", "os", "cpu", "ram", "ram_slot", "storage", "motherboard", "bios", "monitor", "local_user"}
+IGNORED_FIELDS = {"used_gb", "free_gb", "used_gb", "status", "memory_percent", "updated_at", "last_logon", "profile_path"}
+
+
 def _track_change(db: Session, device_id: int, component: str, field: str, old_val, new_val):
+    if component not in TRACKED_COMPONENTS:
+        return
+    if field in IGNORED_FIELDS:
+        return
     if str(old_val or "") != str(new_val or ""):
         db.add(HardwareChange(
             device_id=device_id,
