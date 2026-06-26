@@ -33,8 +33,9 @@ def get_location_tree(db: Session = Depends(get_db), _=Depends(require_role(User
                         LocationTreeNode(id=room.id, name=room.name, type="room")
                         for room in sector.rooms
                     ]
-                    sectors_nodes.append(LocationTreeNode(id=sector.id, name=f"{sector.name} (Andar: {sector.floor or '-'})", type="sector", children=rooms_nodes))
-                branches_nodes.append(LocationTreeNode(id=branch.id, name=branch.name, type="branch", children=sectors_nodes))
+                    sectors_nodes.append(LocationTreeNode(id=sector.id, name=sector.name, type="sector", children=rooms_nodes))
+                branch_label = f"{branch.name}{f' ({branch.address})' if branch.address else ''}"
+                branches_nodes.append(LocationTreeNode(id=branch.id, name=branch_label, type="branch", children=sectors_nodes))
             companies_nodes.append(LocationTreeNode(id=company.id, name=company.name, type="company", children=branches_nodes))
         tree.append(LocationTreeNode(id=unit.id, name=unit.name, type="unit", children=companies_nodes))
     return tree
@@ -42,15 +43,13 @@ def get_location_tree(db: Session = Depends(get_db), _=Depends(require_role(User
 
 @router.get("/rooms-flat")
 def list_rooms_flat(db: Session = Depends(get_db), _=Depends(require_role(UserRole.VIEWER))):
-    rooms = db.query(Room).all()
+    sectors = db.query(Sector).all()
     result = []
-    for room in rooms:
-        sector = db.query(Sector).filter(Sector.id == room.sector_id).first()
-        branch = db.query(Branch).filter(Branch.id == sector.branch_id).first() if sector else None
+    for sector in sectors:
+        branch = db.query(Branch).filter(Branch.id == sector.branch_id).first()
         company = db.query(Company).filter(Company.id == branch.company_id).first() if branch else None
-        unit = db.query(Unit).filter(Unit.id == company.unit_id).first() if company else None
-        parts = [p.name for p in [unit, company, branch, sector, room] if p]
-        result.append({"id": room.id, "full_path": " > ".join(parts)})
+        parts = [p.name for p in [company, branch, sector] if p]
+        result.append({"id": sector.id, "full_path": " > ".join(parts)})
     return result
 
 

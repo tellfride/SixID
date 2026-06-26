@@ -23,14 +23,12 @@ router = APIRouter(prefix="/api/devices", tags=["Devices"])
 def _build_location_path(db: Session, room_id: int | None) -> str | None:
     if not room_id:
         return None
-    room = db.query(Room).filter(Room.id == room_id).first()
-    if not room:
+    sector = db.query(Sector).filter(Sector.id == room_id).first()
+    if not sector:
         return None
-    sector = db.query(Sector).filter(Sector.id == room.sector_id).first()
-    branch = db.query(Branch).filter(Branch.id == sector.branch_id).first() if sector else None
+    branch = db.query(Branch).filter(Branch.id == sector.branch_id).first()
     company = db.query(Company).filter(Company.id == branch.company_id).first() if branch else None
-    unit = db.query(Unit).filter(Unit.id == company.unit_id).first() if company else None
-    parts = [p.name for p in [unit, company, branch, sector, room] if p]
+    parts = [p.name for p in [company, branch, sector] if p]
     return " > ".join(parts)
 
 

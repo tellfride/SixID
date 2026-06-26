@@ -17,12 +17,13 @@ import type { LocationTreeNode } from '../types';
 const { Title, Text } = Typography;
 
 const typeConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  unit: { label: 'Unidade', color: '#1565FF', icon: <BankOutlined /> },
+  unit: { label: 'Empresa', color: '#1565FF', icon: <BankOutlined /> },
   company: { label: 'Empresa', color: '#7C3AED', icon: <HomeOutlined /> },
-  branch: { label: 'Filial', color: '#0EA5E9', icon: <ApartmentOutlined /> },
+  branch: { label: 'Andar', color: '#0EA5E9', icon: <ApartmentOutlined /> },
   sector: { label: 'Setor', color: '#00BFA5', icon: <AppstoreOutlined /> },
-  room: { label: 'Sala', color: '#FFB020', icon: <EnvironmentOutlined /> },
 };
+
+const VISIBLE_TYPES = ['company', 'branch', 'sector'];
 
 export default function LocationsPage() {
   const [tree, setTree] = useState<LocationTreeNode[]>([]);
@@ -66,9 +67,16 @@ export default function LocationsPage() {
     if (branchId) { const { data } = await getSectors(branchId); setSectors(data); }
   };
 
-  const openAddModal = (type: string) => {
+  const openAddModal = async (type: string) => {
     setModalMode('add'); setAddType(type); setEditId(0);
     form.resetFields(); setCompanies([]); setBranches([]); setSectors([]);
+    if (type === 'branch' || type === 'sector') {
+      const unitId = units[0]?.id;
+      if (unitId) {
+        const { data } = await getCompanies(unitId);
+        setCompanies(data);
+      }
+    }
     setModalOpen(true);
   };
 
@@ -102,16 +110,20 @@ export default function LocationsPage() {
           case 'company': await updateCompany(editId, updateData); break;
           case 'branch': await updateBranch(editId, updateData); break;
           case 'sector': await updateSector(editId, updateData); break;
-          case 'room': await updateRoom(editId, updateData); break;
         }
         message.success(`${typeConfig[addType].label} atualizado(a)`);
       } else {
+        let unitId = units[0]?.id;
+        if (!unitId && addType === 'company') {
+          const { data } = await createUnit({ name: 'Default' });
+          unitId = data.id;
+          const { data: u } = await getUnits();
+          setUnits(u);
+        }
         switch (addType) {
-          case 'unit': await createUnit({ name: values.name, description: values.description }); break;
-          case 'company': await createCompany({ name: values.name, unit_id: values.unit_id }); break;
+          case 'company': await createCompany({ name: values.name, unit_id: unitId }); break;
           case 'branch': await createBranch({ name: values.name, address: values.address, company_id: values.company_id }); break;
           case 'sector': await createSector({ name: values.name, floor: values.floor, branch_id: values.branch_id }); break;
-          case 'room': await createRoom({ name: values.name, sector_id: values.sector_id }); break;
         }
         message.success(`${typeConfig[addType].label} adicionado(a)`);
       }
@@ -123,7 +135,7 @@ export default function LocationsPage() {
 
   const convertToTreeData = (nodes: LocationTreeNode[]): any[] => {
     return nodes.map((node) => {
-      const cfg = typeConfig[node.type] || typeConfig.room;
+      const cfg = typeConfig[node.type] || typeConfig.sector;
       const cleanName = node.name.replace(/ \(Andar:.*\)$/, '');
       return {
         title: (
@@ -152,8 +164,8 @@ export default function LocationsPage() {
   };
 
   const parentLabel: Record<string, string> = {
-    company: 'Pertence à Unidade', branch: 'Pertence à Empresa',
-    sector: 'Pertence à Filial', room: 'Pertence ao Setor',
+    branch: 'Pertence à Empresa',
+    sector: 'Pertence ao Andar',
   };
 
   return (
@@ -165,25 +177,29 @@ export default function LocationsPage() {
 
       <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 16 }}>
         <Space wrap>
-          {Object.entries(typeConfig).map(([key, cfg]) => (
-            <Button key={key} icon={cfg.icon} onClick={() => openAddModal(key)}
-              style={{ borderColor: cfg.color, color: cfg.color }}>
-              Nova {cfg.label}
-            </Button>
-          ))}
+          {VISIBLE_TYPES.map(key => {
+            const cfg = typeConfig[key];
+            return (
+              <Button key={key} icon={cfg.icon} onClick={() => openAddModal(key)}
+                style={{ borderColor: cfg.color, color: cfg.color }}>
+                Novo(a) {cfg.label}
+              </Button>
+            );
+          })}
         </Space>
       </Card>
 
       <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12 }}>
         {tree.length > 0 ? (
-          <Tree showIcon defaultExpandAll treeData={convertToTreeData(tree)}
+          <Tree showIcon defaultExpandAll
+            treeData={convertToTreeData(tree.flatMap(u => u.children || []))}
             style={{ background: 'transparent', color: 'var(--text)' }} />
         ) : (
           <div style={{ textAlign: 'center', padding: 40 }}>
             <EnvironmentOutlined style={{ fontSize: 48, color: 'var(--text-secondary)', marginBottom: 16 }} /><br />
             <Text style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Nenhuma localização cadastrada.</Text><br />
             <Button type="primary" icon={<PlusOutlined />} style={{ marginTop: 16 }}
-              onClick={() => openAddModal('unit')}>Criar primeira Unidade</Button>
+              onClick={() => openAddModal('company')}>Criar primeira Empresa</Button>
           </div>
         )}
       </Card>
@@ -198,67 +214,34 @@ export default function LocationsPage() {
             <Input />
           </Form.Item>
 
-          {addType === 'unit' && (
-            <Form.Item name="description" label="Descrição"><Input /></Form.Item>
-          )}
-
-          {modalMode === 'add' && addType === 'company' && (
-            <Form.Item name="unit_id" label={parentLabel[addType]} rules={[{ required: true }]}>
-              <Select placeholder="Selecione a unidade" options={units.map((u: any) => ({ value: u.id, label: u.name }))} />
-            </Form.Item>
-          )}
-
           {modalMode === 'add' && addType === 'branch' && (
             <>
-              <Form.Item label="Unidade" required>
-                <Select placeholder="Selecione" onChange={onUnitChange} options={units.map((u: any) => ({ value: u.id, label: u.name }))} />
-              </Form.Item>
               <Form.Item name="company_id" label={parentLabel[addType]} rules={[{ required: true }]}>
-                <Select placeholder="Selecione" options={companies.map((c: any) => ({ value: c.id, label: c.name }))} disabled={!companies.length} />
+                <Select placeholder="Selecione a empresa" options={companies.map((c: any) => ({ value: c.id, label: c.name }))} />
               </Form.Item>
-              <Form.Item name="address" label="Endereço"><Input /></Form.Item>
+              <Form.Item name="address" label="Identificação do Andar"><Input placeholder="Ex: 2º Andar, Térreo, Bloco A" /></Form.Item>
             </>
           )}
 
           {addType === 'branch' && modalMode === 'edit' && (
-            <Form.Item name="address" label="Endereço"><Input /></Form.Item>
+            <Form.Item name="address" label="Identificação do Andar"><Input /></Form.Item>
           )}
 
           {modalMode === 'add' && addType === 'sector' && (
             <>
-              <Form.Item label="Unidade" required>
-                <Select placeholder="Selecione" onChange={onUnitChange} options={units.map((u: any) => ({ value: u.id, label: u.name }))} />
-              </Form.Item>
               <Form.Item label="Empresa" required>
-                <Select placeholder="Selecione" onChange={onCompanyChange} options={companies.map((c: any) => ({ value: c.id, label: c.name }))} disabled={!companies.length} />
+                <Select placeholder="Selecione" onChange={async (companyId: number) => {
+                  form.setFieldsValue({ branch_id: undefined });
+                  setBranches([]);
+                  if (companyId) { const { data } = await getBranches(companyId); setBranches(data); }
+                }} options={companies.map((c: any) => ({ value: c.id, label: c.name }))} />
               </Form.Item>
               <Form.Item name="branch_id" label={parentLabel[addType]} rules={[{ required: true }]}>
-                <Select placeholder="Selecione" options={branches.map((b: any) => ({ value: b.id, label: b.name }))} disabled={!branches.length} />
-              </Form.Item>
-              <Form.Item name="floor" label="Andar"><Input /></Form.Item>
-            </>
-          )}
-
-          {addType === 'sector' && modalMode === 'edit' && (
-            <Form.Item name="floor" label="Andar"><Input /></Form.Item>
-          )}
-
-          {modalMode === 'add' && addType === 'room' && (
-            <>
-              <Form.Item label="Unidade" required>
-                <Select placeholder="Selecione" onChange={onUnitChange} options={units.map((u: any) => ({ value: u.id, label: u.name }))} />
-              </Form.Item>
-              <Form.Item label="Empresa" required>
-                <Select placeholder="Selecione" onChange={onCompanyChange} options={companies.map((c: any) => ({ value: c.id, label: c.name }))} disabled={!companies.length} />
-              </Form.Item>
-              <Form.Item label="Filial" required>
-                <Select placeholder="Selecione" onChange={onBranchChange} options={branches.map((b: any) => ({ value: b.id, label: b.name }))} disabled={!branches.length} />
-              </Form.Item>
-              <Form.Item name="sector_id" label={parentLabel[addType]} rules={[{ required: true }]}>
-                <Select placeholder="Selecione" options={sectors.map((s: any) => ({ value: s.id, label: `${s.name}${s.floor ? ` (${s.floor})` : ''}` }))} disabled={!sectors.length} />
+                <Select placeholder="Selecione o andar" options={branches.map((b: any) => ({ value: b.id, label: b.name }))} disabled={!branches.length} />
               </Form.Item>
             </>
           )}
+
         </Form>
       </Modal>
     </div>

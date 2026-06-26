@@ -26,7 +26,7 @@ class Device(Base):
     status: Mapped[DeviceStatus] = mapped_column(Enum(DeviceStatus), default=DeviceStatus.UNKNOWN)
     last_seen: Mapped[datetime | None] = mapped_column(DateTime)
     agent_version: Mapped[str | None] = mapped_column(String(50))
-    room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id", ondelete="SET NULL"))
+    room_id: Mapped[int | None] = mapped_column(ForeignKey("sectors.id", ondelete="SET NULL"))
     responsible_person_id: Mapped[int | None] = mapped_column(ForeignKey("responsible_persons.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))
@@ -46,7 +46,7 @@ class Device(Base):
     local_users: Mapped[list["DeviceLocalUser"]] = relationship(back_populates="device", cascade="all, delete-orphan")
     hardware_changes: Mapped[list["HardwareChange"]] = relationship(back_populates="device", cascade="all, delete-orphan")
 
-    room: Mapped["Room | None"] = relationship()
+    room: Mapped["Sector | None"] = relationship(foreign_keys=[room_id])
     responsible_person: Mapped["ResponsiblePerson | None"] = relationship()
 
 
@@ -56,4 +56,4 @@ from app.models.inventory import (  # noqa: E402
     DevicePrinter, DeviceSoftware, DeviceService, DeviceLocalUser,
 )
 from app.models.tracking import HardwareChange  # noqa: E402
-from app.models.location import Room, ResponsiblePerson  # noqa: E402
+from app.models.location import Sector, ResponsiblePerson  # noqa: E402

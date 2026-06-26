@@ -16,7 +16,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { getDashboardStats, getOsDistribution, getStorageUsage,
   getDevicesPerUnit, getAlertHistory, getDevices, getRamDistribution,
   getDiskHealth, getTopSoftware, getDevicesByOs, getDevicesByRam,
-  getDevicesByStorageType, getStorageCapacity } from '../api/endpoints';
+  getDevicesByStorageType, getStorageCapacity,
+  getDevicesPerFloor, getDevicesByFloor } from '../api/endpoints';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { WSMessage } from '../hooks/useWebSocket';
 import { useThemeStore } from '../store/themeStore';
@@ -26,7 +27,7 @@ const { Title, Text } = Typography;
 const COLORS = ['#1565FF', '#00BFA5', '#FFB020', '#FF4D4F', '#7C3AED', '#0EA5E9', '#F472B6'];
 
 const STORAGE_KEY = 'sixid_dashboard_order';
-const DEFAULT_ORDER = ['os_ram', 'storage', 'disk_usage', 'software_history', 'health', 'recent'];
+const DEFAULT_ORDER = ['os_ram', 'storage', 'floor_devices', 'disk_usage', 'software_history', 'health', 'recent'];
 
 function SortablePanel({ id, children }: { id: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -57,6 +58,7 @@ export default function DashboardPage() {
   const [diskHealth, setDiskHealth] = useState<any[]>([]);
   const [topSoftware, setTopSoftware] = useState<{ name: string; count: number }[]>([]);
   const [storageCapacity, setStorageCapacity] = useState<any[]>([]);
+  const [floorData, setFloorData] = useState<any[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [panelOrder, setPanelOrder] = useState<string[]>(() => {
@@ -109,17 +111,29 @@ export default function DashboardPage() {
     const { data } = await getDevicesByStorageType(label); setDrillModal(p => ({ ...p, data })); setDrillLoading(false);
   };
 
+  const drillFloor = async (branchId: number, floorName: string) => {
+    setDrillLoading(true);
+    setDrillModal({ open: true, title: `Dispositivos — ${floorName}`, data: [], columns: [
+      ...deviceCols,
+      { title: 'Setor', dataIndex: 'sector', key: 'sector' },
+    ]});
+    const { data } = await getDevicesByFloor(branchId);
+    setDrillModal(p => ({ ...p, data }));
+    setDrillLoading(false);
+  };
+
   const refreshStats = useCallback(async () => { try { const { data } = await getDashboardStats(); setStats(data); } catch {} }, []);
   const refreshDeviceTable = useCallback(async () => { try { const { data } = await getDevices({ page_size: 10 }); setDevices(data); } catch {} }, []);
   const refreshCharts = useCallback(async () => {
     try {
-      const [a, b, c, d, e, f, g, h] = await Promise.all([
+      const [a, b, c, d, e, f, g, h, fl] = await Promise.all([
         getOsDistribution(), getStorageUsage(), getDevicesPerUnit(), getRamDistribution(),
         getDiskHealth(), getTopSoftware(10), getAlertHistory(), getStorageCapacity(),
+        getDevicesPerFloor(),
       ]);
       setOsData(a.data.data); setStorageData(b.data.data); setUnitData(c.data.data);
       setRamData(d.data.data); setDiskHealth(e.data); setTopSoftware(f.data);
-      setAlertData(g.data); setStorageCapacity(h.data);
+      setAlertData(g.data); setStorageCapacity(h.data); setFloorData(fl.data);
     } catch {}
   }, []);
 
@@ -209,6 +223,36 @@ export default function DashboardPage() {
                 <RTooltip contentStyle={tooltipStyle} /><Bar dataKey="used" fill="#FF4D4F" stackId="a" name="Usado (GB)" /><Bar dataKey="free" fill="#00BFA5" stackId="a" name="Livre (GB)" radius={[6, 6, 0, 0]} /><Legend />
               </BarChart>
             </ResponsiveContainer>
+          </Card>
+        </Col>
+      </Row>
+    ),
+    floor_devices: (
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
+          <Card title="Dispositivos por Andar" style={cardStyle} extra={clickHint} styles={hdr}>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={floorData.map(f => ({ ...f, label: f.floor }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis dataKey="label" stroke={axisColor} />
+                <YAxis stroke={axisColor} allowDecimals={false} />
+                <RTooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="count" fill="#0EA5E9" radius={[6, 6, 0, 0]} name="Dispositivos"
+                  style={{ cursor: 'pointer' }} onClick={(entry: any) => drillFloor(entry.branch_id, entry.label)} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title="Detalhes por Andar" style={cardStyle} styles={hdr}>
+            <Table dataSource={floorData} rowKey="branch_id" size="small" pagination={false}
+              onRow={(r) => ({ onClick: () => drillFloor(r.branch_id, r.floor), style: { cursor: 'pointer' } })}
+              columns={[
+                { title: 'Empresa', dataIndex: 'company', key: 'company' },
+                { title: 'Andar', dataIndex: 'floor', key: 'floor' },
+                { title: 'Dispositivos', dataIndex: 'count', key: 'count', width: 120,
+                  render: (v: number) => <Text strong style={{ color: '#0EA5E9' }}>{v}</Text> },
+              ]} />
           </Card>
         </Col>
       </Row>

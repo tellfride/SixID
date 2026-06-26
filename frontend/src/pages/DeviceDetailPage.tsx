@@ -146,13 +146,13 @@ export default function DeviceDetailPage() {
       const { data } = await getRoomsFlat();
       setRooms(data);
     } catch {
-      message.error('Erro ao carregar salas');
+      message.error('Erro ao carregar setores');
     }
   };
 
   const handleSaveLocation = async () => {
     if (!selectedRoomId) {
-      message.warning('Selecione uma sala');
+      message.warning('Selecione um setor');
       return;
     }
     setSavingLocation(true);
@@ -535,7 +535,7 @@ export default function DeviceDetailPage() {
         <Select
           showSearch
           style={{ width: '100%' }}
-          placeholder="Selecione a sala"
+          placeholder="Selecione o setor"
           value={selectedRoomId}
           onChange={setSelectedRoomId}
           filterOption={(input, option) =>

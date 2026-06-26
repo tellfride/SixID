@@ -65,6 +65,10 @@ export const getDevicesByStorageType = (mediaType: string) =>
   api.get<any[]>('/dashboard/devices-by-storage-type', { params: { media_type: mediaType } });
 export const getStorageCapacity = () =>
   api.get<any[]>('/dashboard/storage-capacity');
+export const getDevicesPerFloor = () =>
+  api.get<any[]>('/dashboard/devices-per-floor');
+export const getDevicesByFloor = (branchId: number) =>
+  api.get<any[]>('/dashboard/devices-by-floor', { params: { branch_id: branchId } });
 
 // Locations
 export const getLocationTree = () =>

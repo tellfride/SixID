@@ -81,16 +81,44 @@ def get_storage_usage(db: Session = Depends(get_db), _=Depends(get_current_user)
 
 @router.get("/devices-per-unit", response_model=DashboardChartData)
 def get_devices_per_unit(db: Session = Depends(get_db), _=Depends(get_current_user)):
-    rows = (db.query(Unit.name, func.count(Device.id))
-            .join(Company, Unit.id == Company.unit_id)
-            .join(Branch, Company.id == Branch.company_id)
+    rows = (db.query(Branch.name, func.count(Device.id))
             .join(Sector, Branch.id == Sector.branch_id)
-            .join(Room, Sector.id == Room.sector_id)
-            .join(Device, Room.id == Device.room_id)
-            .group_by(Unit.name).all())
+            .join(Device, Sector.id == Device.room_id)
+            .group_by(Branch.name).all())
     return DashboardChartData(data=[
         ChartDataPoint(label=name, value=count) for name, count in rows
     ])
+
+
+@router.get("/devices-per-floor")
+def get_devices_per_floor(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    rows = (db.query(
+        Branch.id, Branch.name, Company.name.label('company'),
+        func.count(Device.id).label('count'),
+    )
+    .join(Sector, Branch.id == Sector.branch_id)
+    .join(Device, Sector.id == Device.room_id)
+    .join(Company, Branch.company_id == Company.id)
+    .group_by(Branch.id, Branch.name, Company.name)
+    .order_by(func.count(Device.id).desc()).all())
+
+    return [{"branch_id": r[0], "floor": r[1], "company": r[2], "count": r[3]} for r in rows]
+
+
+@router.get("/devices-by-floor")
+def get_devices_by_floor(branch_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    rows = (db.query(Device.id, Device.hostname, Device.current_user, Device.status,
+                     Device.last_seen, Sector.name.label('sector'))
+            .join(Sector, Device.room_id == Sector.id)
+            .filter(Sector.branch_id == branch_id)
+            .order_by(Sector.name, Device.hostname).all())
+    return [
+        {"id": r[0], "hostname": r[1], "current_user": r[2],
+         "status": r[3].value if r[3] else "unknown",
+         "last_seen": r[4].isoformat() if r[4] else None,
+         "sector": r[5]}
+        for r in rows
+    ]
 
 
 @router.get("/alert-history", response_model=list[AlertHistoryPoint])
