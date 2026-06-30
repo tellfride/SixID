@@ -115,12 +115,31 @@ def _create_block_script():
         f.write(script)
 
 
+def _is_blocker_running() -> bool:
+    try:
+        result = subprocess.run(
+            ["wmic", "process", "where",
+             "commandline like '%sysid9_block_input%'",
+             "get", "processid"],
+            capture_output=True, text=True, timeout=10,
+        )
+        for line in result.stdout.splitlines():
+            if line.strip().isdigit():
+                return True
+    except Exception:
+        pass
+    return False
+
+
 def block_input() -> bool:
     global _blocking
 
-    if _blocking:
+    if _blocking and _is_blocker_running():
         logger.info("Input already blocked")
         return True
+    elif _blocking and not _is_blocker_running():
+        logger.info("Block flag was set but process died — re-blocking")
+        _blocking = False
 
     _create_block_script()
     command = f'powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File "{SCRIPT_PATH}"'
