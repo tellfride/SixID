@@ -40,17 +40,24 @@ Sistema completo para monitorar, gerenciar e controlar remotamente dispositivos 
 ### Controle Remoto
 | Comando | Descricao |
 |---------|-----------|
-| Bloquear Tela | Tela fullscreen HTA via CreateProcessAsUser |
+| Bloquear Tela | Tela fullscreen HTA via CreateProcessAsUser, com mensagem personalizada |
 | Desbloquear Tela | Remove bloqueio (mata mshta.exe) |
-| Acesso VNC | Inicia TightVNC (auto-install) + download .vnc |
-| Bloquear Teclado/Mouse | BlockInput via Win32 API |
-| Bloquear USB | Desativa USBSTOR no registro |
-| Criar Usuario | net user + grupo Administrators |
-| Alterar Senha | Em massa para multiplos dispositivos |
+| Acesso VNC | Inicia TightVNC (auto-install) + download .vnc, senha alteravel pela web |
+| Bloquear/Desbloquear Teclado e Mouse | Hooks globais de baixo nivel (WH_KEYBOARD_LL/WH_MOUSE_LL) via CreateProcessAsUser na sessao do usuario |
+| Bloquear/Desbloquear USB | Ativa/desativa USBSTOR no registro |
+| Criar Usuario Administrador | net user + grupo Administrators |
+| Alterar Senha | Individual, em lote ou para todos os dispositivos via caixa de selecao |
+| Habilitar/Desabilitar Usuario | net user /active:yes ou /active:no |
 | Reiniciar/Desligar | shutdown /r ou /s |
+| Executar Comando Shell | Execucao remota arbitraria (run_shell) |
+
+> Bloqueio de teclado/mouse: a API legada `BlockInput()` e ignorada silenciosamente em muitas configuracoes do Windows moderno. A implementacao atual instala hooks globais (`SetWindowsHookEx` com `WH_KEYBOARD_LL`/`WH_MOUSE_LL`) que interceptam e descartam os eventos antes de chegarem a qualquer janela — a mesma tecnica usada por softwares de kiosk/controle parental.
 
 ### Localizacoes
-Hierarquia de 5 niveis: **Unidade > Empresa > Filial > Setor > Sala**
+Hierarquia de 3 niveis, editavel pela interface: **Empresa > Andar > Setor**. Dashboard com visao agregada por andar.
+
+### Impressoras
+Pagina dedicada com cards reordenaveis (drag-and-drop via @dnd-kit), status e modelo de cada impressora detectada nos dispositivos.
 
 ### Seguranca
 - Autenticacao JWT (access + refresh token)
@@ -60,41 +67,49 @@ Hierarquia de 5 niveis: **Unidade > Empresa > Filial > Setor > Sala**
 - Agente autenticado via API key
 
 ### Interface
+- Identidade visual SixID (favicon, logo e paleta de cores proprios)
 - Tema claro/escuro com toggle (persiste em localStorage)
 - Versao dinamica no footer (lida da tag git)
 - Busca global no header
-- 8 paginas: Dashboard, Ativos, Inventario, Localizacoes, Senhas Remotas, Usuarios, Auditoria
+- Cards responsivos, reenquadrados para qualquer tamanho de tela
+- Paginas: Dashboard, Dashboard de Hardware, Ativos (com filtro "Todos"), Inventario, Localizacoes, Impressoras, Gestao de Usuarios Remotos, Usuarios do Sistema, Auditoria
 
 ## Agente Windows
 
-Executavel unico (.exe) compilado com PyInstaller. Roda como servico SYSTEM invisivel.
+Instalador unico (.exe) compilado com PyInstaller. O agente roda em segundo plano, invisivel, com auto-start redundante (tarefa agendada ONSTART como SYSTEM + watchdog a cada 5min + Registry Run como fallback).
 
-**Coletores**: hostname, SO, CPU, RAM, discos, rede, placa-mae, BIOS, monitores, impressoras, software, servicos, usuarios, processos
+**Coletores**: hostname, SO, CPU, RAM (slots), discos, rede, placa-mae, BIOS, monitores, impressoras, software, servicos, usuarios locais, processos
 
-**Intervalos**: heartbeat (60s), inventario (6h), deteccao de mudancas (30min), polling de comandos (30s)
+**Intervalos**: heartbeat (60s), inventario (6h), deteccao de mudancas (30min), polling de comandos (30s) + WebSocket em tempo real
+
+**Comunicacao**: WebSocket para comandos instantaneos, com fallback de polling REST a cada 30s caso a conexao caia
 
 **Instalacao**:
 ```bash
-# GUI
-SysID9Host.exe
+# GUI (assistente passo a passo)
+SysID9Installer.exe
 
 # Silenciosa
-SysID9Host.exe /silent /server=http://IP:8000 /token=CHAVE
+SysID9Installer.exe /silent /server=http://IP:8000 /token=CHAVE
 ```
 
+O instalador preserva o ID do agente em reinstalacoes (nao duplica o dispositivo no dashboard) e testa a conexao com o servidor antes de configurar o auto-start.
+
 **Locais**:
-- Executavel: `C:\Program Files\SysID9\`
+- Executavel: `C:\Program Files\SysID9\SysID9Host.exe`
 - Config: `C:\ProgramData\SysID9\config.ini`
 - Logs: `C:\ProgramData\SysID9\agent.log`
 
+> Antivirus: se o Windows Defender sinalizar o agente como suspeito (comum para executaveis PyInstaller nao assinados), adicione uma excecao manual: `Add-MpPreference -ExclusionPath 'C:\Program Files\SysID9' -ExclusionProcess 'SysID9Host.exe'`
+
 ## Banco de Dados
 
-26 tabelas em 4 grupos:
+Tabelas organizadas em 4 grupos:
 
-- **Dispositivos** (14 tabelas): devices, device_os, device_cpu, device_ram, device_storage, device_network, etc.
-- **Rastreamento** (5 tabelas): hardware_changes, audit_logs, pending_commands, remote_sessions, screen_locks
-- **Localizacoes** (5 tabelas): units, companies, branches, sectors, rooms
-- **Usuarios** (2 tabelas): users, responsible_persons
+- **Dispositivos**: devices, device_os, device_cpu, device_ram, device_ram_slot, device_storage, device_network, device_motherboard, device_bios, device_monitor, device_printer, device_software, device_service, device_process, etc.
+- **Rastreamento**: hardware_changes (filtrado para registrar so mudancas relevantes de hardware/contas, ignorando ruido de campos volateis), audit_logs, pending_commands, remote_sessions, screen_locks
+- **Localizacoes**: units, companies, branches, sectors, rooms
+- **Usuarios**: users, responsible_persons, local_users
 
 ## Deploy
 
@@ -138,8 +153,12 @@ instalar_agente.bat + SysID9Host.exe
 | GET | /api/dashboard/ram-distribution | Distribuicao de RAM |
 | GET | /api/dashboard/disk-health | Saude dos discos |
 | GET | /api/dashboard/top-software | Top softwares |
-| POST | /api/remote/{id}/lock | Bloquear tela |
-| POST | /api/remote/{id}/command | Enviar comando |
+| GET/POST/PUT/DELETE | /api/locations/* | CRUD de empresas, andares e setores |
+| GET | /api/printers/ | Listar impressoras de todos os dispositivos |
+| POST | /api/remote/{id}/command | Enviar comando (lock_screen, block_input, change_password, disable_user, etc.) |
+| POST | /api/remote/batch/change-password | Alterar senha em lote (dispositivos selecionados ou todos) |
+| GET | /api/agent/commands | Polling de comandos pendentes (usado pelo agente) |
+| GET | /api/audit/ | Trilha de auditoria de todas as acoes |
 | WS | /ws/dashboard | Atualizacoes em tempo real |
 | WS | /ws/agent/{id} | Canal do agente |
 
@@ -151,6 +170,11 @@ A documentacao tecnica completa esta disponivel em PDF: [`docs/SixiD_Documentaca
 
 | Versao | Descricao |
 |--------|-----------|
+| **v1.4.4** | Fix definitivo de bloqueio de teclado/mouse (hooks de baixo nivel via SetWindowsHookEx), fix de desabilitar/habilitar usuario e troca de senha remota |
+| **v1.4.3** | Hierarquia Empresa > Andar > Setor, dashboard por andar |
+| **v1.4.2** | Dashboard de impressoras, cards moveis (drag-and-drop), localizacoes editaveis |
+| **v1.4.1** | Filtro "Todos" em dispositivos, deteccao de mudanca de hardware filtrada (sem ruido) |
+| **v1.4.0** | Identidade visual SixID (favicon, logo, paleta de cores) |
 | **v1.3.5** | Dashboard avancado, tema claro/escuro, versao dinamica, cards clicaveis |
 | **v1.3.4** | Fix bloqueio de tela (CreateProcessAsUser), auto-refresh WebSocket |
 | **v1.3.0** | Bloqueio USB/teclado, senha VNC, cards responsivos |
