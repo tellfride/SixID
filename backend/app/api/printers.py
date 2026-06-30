@@ -12,12 +12,22 @@ from sqlalchemy.orm import Session
 
 from app.config import TIMEZONE_BR
 from app.database import get_db
-from app.models.printer import Printer, PrinterCounter, TonerChange, TonerStock, TonerStockLog
+from app.models.printer import Printer, PrinterCounter, TonerChange, TonerStock, TonerStockLog, PrinterCollectionSchedule
 from app.models.user import User, UserRole
 from app.services.audit_service import log_action
+from app.utils.excel import xlsx_safe
 from app.utils.security import get_current_user, require_role
 
 router = APIRouter(prefix="/api/printers", tags=["Printers"])
+
+
+def _date_trunc(db: Session, column, fmt: str):
+    """Cross-database date formatting: fmt uses strftime-style tokens (%Y, %m, %d)."""
+    dialect = db.bind.dialect.name
+    if dialect == "mysql":
+        # MySQL/MariaDB DATE_FORMAT uses the same %Y/%m/%d tokens as strftime
+        return func.date_format(column, fmt)
+    return func.strftime(fmt, column)
 
 
 # ── Schemas ──
@@ -292,12 +302,13 @@ def get_printer_dashboard(db: Session = Depends(get_db), _=Depends(get_current_u
     toner_by_model = [{"model": m, "count": c} for m, c in toner_models]
 
     # Monthly pages (last 12 months from counters)
+    month_expr = _date_trunc(db, PrinterCounter.collected_at, '%Y-%m')
     monthly = (db.query(
-        func.strftime('%Y-%m', PrinterCounter.collected_at).label('month'),
+        month_expr.label('month'),
         func.max(PrinterCounter.total_pages).label('max_pages'),
         PrinterCounter.printer_id,
-    ).group_by('month', PrinterCounter.printer_id)
-     .order_by('month').all())
+    ).group_by(month_expr, PrinterCounter.printer_id)
+     .order_by(month_expr).all())
 
     months_data: dict[str, int] = {}
     prev_by_printer: dict[int, int] = {}
@@ -318,14 +329,15 @@ def get_printer_dashboard(db: Session = Depends(get_db), _=Depends(get_current_u
     now = datetime.now(TIMEZONE_BR)
 
     def _pages_in_period(since: datetime) -> list[dict]:
+        day_expr = _date_trunc(db, PrinterCounter.collected_at, '%Y-%m-%d')
         rows = (db.query(
-            func.strftime('%Y-%m-%d', PrinterCounter.collected_at).label('day'),
+            day_expr.label('day'),
             func.max(PrinterCounter.total_pages),
             func.min(PrinterCounter.total_pages),
             PrinterCounter.printer_id,
         ).filter(PrinterCounter.collected_at >= since)
-         .group_by('day', PrinterCounter.printer_id)
-         .order_by('day').all())
+         .group_by(day_expr, PrinterCounter.printer_id)
+         .order_by(day_expr).all())
 
         daily: dict[str, int] = {}
         for day, max_p, min_p, pid in rows:
@@ -333,11 +345,12 @@ def get_printer_dashboard(db: Session = Depends(get_db), _=Depends(get_current_u
         return [{"date": d, "pages": p} for d, p in sorted(daily.items())]
 
     def _toners_in_period(since: datetime) -> list[dict]:
+        day_expr = _date_trunc(db, TonerChange.changed_at, '%Y-%m-%d')
         rows = (db.query(
-            func.strftime('%Y-%m-%d', TonerChange.changed_at).label('day'),
+            day_expr.label('day'),
             func.count(TonerChange.id),
         ).filter(TonerChange.changed_at >= since)
-         .group_by('day').order_by('day').all())
+         .group_by(day_expr).order_by(day_expr).all())
         return [{"date": d, "count": c} for d, c in rows]
 
     daily_pages = _pages_in_period(now - timedelta(days=7))
@@ -380,6 +393,50 @@ def get_printer_dashboard(db: Session = Depends(get_db), _=Depends(get_current_u
         "weekly_toners_chart": weekly_toners,
         "monthly_toners_chart": monthly_toners,
     }
+
+
+# ── Scheduled (automatic) collection ──
+
+class ScheduleUpdate(BaseModel):
+    enabled: bool
+    interval_minutes: int
+
+
+@router.get("/schedule")
+def get_schedule(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    sched = db.query(PrinterCollectionSchedule).first()
+    if not sched:
+        sched = PrinterCollectionSchedule(enabled=False, interval_minutes=60)
+        db.add(sched)
+        db.commit()
+        db.refresh(sched)
+    return {
+        "enabled": sched.enabled,
+        "interval_minutes": sched.interval_minutes,
+        "last_run": sched.last_run.isoformat() if sched.last_run else None,
+    }
+
+
+@router.put("/schedule")
+def update_schedule(
+    data: ScheduleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TECHNICIAN)),
+):
+    if data.interval_minutes < 5:
+        raise HTTPException(400, "Intervalo mínimo é de 5 minutos")
+    sched = db.query(PrinterCollectionSchedule).first()
+    if not sched:
+        sched = PrinterCollectionSchedule()
+        db.add(sched)
+    sched.enabled = data.enabled
+    sched.interval_minutes = data.interval_minutes
+    db.commit()
+
+    log_action(db, "printer_schedule_updated", user_id=current_user.id,
+               details={"enabled": data.enabled, "interval_minutes": data.interval_minutes})
+
+    return {"message": "Agendamento atualizado", "enabled": sched.enabled, "interval_minutes": sched.interval_minutes}
 
 
 # ── Ping ──
@@ -507,11 +564,7 @@ def collect_counter(
     return {"total_pages": pages, "effective_pages": effective, "initial_counter": printer.initial_counter}
 
 
-@router.post("/collect-all")
-def collect_all_counters(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.TECHNICIAN)),
-):
+def collect_all_printers(db: Session) -> dict:
     printers = db.query(Printer).filter(Printer.is_active == True, Printer.ip_address != None).all()
     results = []
     for p in printers:
@@ -525,6 +578,16 @@ def collect_all_counters(
     db.commit()
     return {"results": results, "collected": sum(1 for r in results if r["status"] == "ok")}
 
+
+@router.post("/collect-all")
+def collect_all_counters(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TECHNICIAN)),
+):
+    return collect_all_printers(db)
+
+
+# ── Scheduled (automatic) collection ──
 
 @router.get("/{printer_id}/history")
 def get_counter_history(
@@ -740,7 +803,7 @@ def export_toner_logs(
             l.notes or "",
         ]
         for ci, val in enumerate(row, 1):
-            cell = ws.cell(row=ri, column=ci, value=val)
+            cell = ws.cell(row=ri, column=ci, value=xlsx_safe(val))
             cell.border = thin
 
     for ci in range(1, len(headers) + 1):

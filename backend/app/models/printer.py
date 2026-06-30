@@ -82,3 +82,13 @@ class TonerStockLog(Base):
 
     user = relationship("User")
     printer = relationship("Printer")
+
+
+class PrinterCollectionSchedule(Base):
+    __tablename__ = "printer_collection_schedule"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    interval_minutes: Mapped[int] = mapped_column(Integer, default=60)
+    last_run: Mapped[datetime | None] = mapped_column(DateTime)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR), onupdate=lambda: datetime.now(TIMEZONE_BR))

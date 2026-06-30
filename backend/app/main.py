@@ -1,15 +1,22 @@
+import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import settings
+from app.config import settings, TIMEZONE_BR
 from app.database import engine, Base, SessionLocal
 from app.models import *  # noqa: F401,F403
 from app.models.user import User, UserRole
+from app.models.printer import PrinterCollectionSchedule
 from app.utils.security import hash_password
 from app.api import auth, users, devices, agent, locations, remote, dashboard, audit, printers
+from app.api.printers import collect_all_printers
 from app.websocket.routes import router as ws_router
+
+logger = logging.getLogger("SixID")
 
 
 def _seed_admin():
@@ -29,11 +36,40 @@ def _seed_admin():
         db.close()
 
 
+def _check_printer_schedule():
+    db = SessionLocal()
+    try:
+        sched = db.query(PrinterCollectionSchedule).first()
+        if not sched or not sched.enabled:
+            return
+        now = datetime.now(TIMEZONE_BR)
+        last_run = sched.last_run
+        if last_run and last_run.tzinfo is None:
+            last_run = last_run.replace(tzinfo=TIMEZONE_BR)
+        due = last_run is None or (now - last_run) >= timedelta(minutes=sched.interval_minutes)
+        if not due:
+            return
+        result = collect_all_printers(db)
+        sched.last_run = now
+        db.commit()
+        logger.info(f"Coleta SNMP automatica: {result['collected']} impressora(s) coletada(s)")
+    except Exception as e:
+        logger.error(f"Erro na coleta SNMP automatica: {e}")
+    finally:
+        db.close()
+
+
+scheduler = BackgroundScheduler()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     _seed_admin()
+    scheduler.add_job(_check_printer_schedule, "interval", minutes=1, id="printer_schedule_check")
+    scheduler.start()
     yield
+    scheduler.shutdown(wait=False)
 
 
 app = FastAPI(

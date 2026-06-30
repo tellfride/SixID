@@ -21,6 +21,7 @@ import { getDashboardStats, getOsDistribution, getStorageUsage,
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { WSMessage } from '../hooks/useWebSocket';
 import { useThemeStore } from '../store/themeStore';
+import AlertsModal from '../components/common/AlertsModal';
 import type { DashboardStats, ChartDataPoint, AlertHistoryPoint, Device } from '../types';
 
 const { Title, Text } = Typography;
@@ -71,6 +72,7 @@ export default function DashboardPage() {
 
   const [drillModal, setDrillModal] = useState<{ open: boolean; title: string; data: any[]; columns: any[] }>({ open: false, title: '', data: [], columns: [] });
   const [drillLoading, setDrillLoading] = useState(false);
+  const [alertsModalOpen, setAlertsModalOpen] = useState(false);
 
   const cardStyle = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12 };
   const tooltipStyle = { background: isDark ? '#162032' : '#ffffff', border: '1px solid var(--border)', borderRadius: 8, color: isDark ? '#E6EAF0' : '#1a1a2e' };
@@ -172,7 +174,7 @@ export default function DashboardPage() {
     { title: 'Total de Ativos', value: stats?.total_devices || 0, icon: <DesktopOutlined />, color: '#1565FF', onClick: () => navigate('/devices') },
     { title: 'Online', value: stats?.online || 0, icon: <CheckCircleOutlined />, color: '#00BFA5', onClick: () => navigate('/devices?status=online') },
     { title: 'Offline', value: stats?.offline || 0, icon: <CloseCircleOutlined />, color: '#FF4D4F', onClick: () => navigate('/devices?status=offline') },
-    { title: 'Alertas', value: stats?.alerts || 0, icon: <WarningOutlined />, color: '#FFB020', onClick: () => navigate('/devices?status=offline') },
+    { title: 'Alertas', value: stats?.alerts || 0, icon: <WarningOutlined />, color: '#FFB020', onClick: () => setAlertsModalOpen(true) },
     { title: 'Uptime Médio', value: `${stats?.avg_uptime_percent || 0}%`, icon: <PercentageOutlined />, color: '#7C3AED', onClick: () => navigate('/devices') },
     { title: 'Tempo Offline Médio', value: `${stats?.avg_offline_hours || 0}h`, icon: <ClockCircleOutlined />, color: '#0EA5E9', onClick: () => navigate('/devices?status=offline') },
   ];
@@ -374,10 +376,12 @@ export default function DashboardPage() {
       {/* Drill-down Modal */}
       <Modal title={drillModal.title} open={drillModal.open} footer={null} width={900}
         onCancel={() => setDrillModal(p => ({ ...p, open: false }))}>
-        <Table dataSource={drillModal.data} columns={drillModal.columns} rowKey="id"
+        <Table dataSource={drillModal.data} columns={drillModal.columns} rowKey={(r: any) => r._key ?? r.id}
           loading={drillLoading} size="small" pagination={{ pageSize: 15 }}
           onRow={(r) => ({ onClick: () => { setDrillModal(p => ({ ...p, open: false })); navigate(`/devices/${r.id}`); }, style: { cursor: 'pointer' } })} />
       </Modal>
+
+      <AlertsModal open={alertsModalOpen} onClose={() => setAlertsModalOpen(false)} onChanged={refreshStats} />
     </div>
   );
 }

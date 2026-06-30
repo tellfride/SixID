@@ -65,6 +65,17 @@ class PendingCommand(Base):
     device = relationship("Device")
 
 
+class DismissedAlert(Base):
+    __tablename__ = "dismissed_alerts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    alert_key: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    dismissed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    dismissed_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR))
+
+    user = relationship("User")
+
+
 class ScreenLock(Base):
     __tablename__ = "screen_locks"
 

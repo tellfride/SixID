@@ -1,15 +1,17 @@
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import func, case, literal
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import func, case, literal, or_, and_
 from sqlalchemy.orm import Session
 
 from app.config import TIMEZONE_BR
 from app.database import get_db
 from app.models.device import Device, DeviceStatus
 from app.models.inventory import DeviceOS, DeviceStorage, DeviceRAM, DeviceSoftware, DeviceCPU
-from app.models.tracking import HardwareChange
+from app.models.tracking import HardwareChange, DismissedAlert
 from app.models.location import Room, Sector, Branch, Company, Unit
+from app.models.user import User
 from app.schemas.dashboard import (
     DashboardStats, ChartDataPoint, AlertHistoryPoint, DashboardChartData,
     DiskHealthItem, TopSoftwareItem,
@@ -18,6 +20,61 @@ from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
+# Component/field combinations considered "critical" enough to raise an alert
+# (physical hardware that shouldn't change without a real intervention).
+CRITICAL_HW_FIELDS = [
+    ("ram", "total_gb"),
+    ("storage", "capacity_gb"),
+    ("cpu", "model"),
+    ("cpu", "cores"),
+]
+
+
+def _get_active_alerts(db: Session) -> list[dict]:
+    """Build the current alert list (offline + critical hardware changes),
+    each tagged with a stable alert_key, excluding alerts the user dismissed."""
+    threshold = datetime.now(TIMEZONE_BR) - timedelta(hours=24)
+
+    offline_devices = (db.query(Device)
+                        .filter(Device.status == DeviceStatus.OFFLINE, Device.last_seen < threshold)
+                        .all())
+    offline_list = []
+    for d in offline_devices:
+        last_seen_iso = d.last_seen.isoformat() if d.last_seen else "unknown"
+        offline_list.append({
+            "alert_key": f"offline:{d.id}:{last_seen_iso}",
+            "id": d.id, "hostname": d.hostname, "reason": "offline",
+            "detail": f"Offline desde {d.last_seen.strftime('%d/%m/%Y %H:%M') if d.last_seen else 'data desconhecida'}",
+        })
+
+    hw_filter = or_(*[
+        and_(HardwareChange.component == c, HardwareChange.field_name == f)
+        for c, f in CRITICAL_HW_FIELDS
+    ])
+    hw_changes = (db.query(HardwareChange, Device.hostname)
+                  .join(Device, Device.id == HardwareChange.device_id)
+                  .filter(HardwareChange.detected_at >= threshold, hw_filter)
+                  .order_by(HardwareChange.detected_at.desc()).all())
+    hw_list = [
+        {
+            "alert_key": f"hw:{hc.id}",
+            "id": hc.device_id, "hostname": hostname, "reason": "hardware",
+            "detail": f"{hc.component}.{hc.field_name}: {hc.old_value} → {hc.new_value} ({hc.detected_at.strftime('%d/%m/%Y %H:%M')})",
+        }
+        for hc, hostname in hw_changes
+    ]
+
+    all_alerts = offline_list + hw_list
+    if not all_alerts:
+        return []
+
+    dismissed_keys = {
+        row[0] for row in db.query(DismissedAlert.alert_key)
+        .filter(DismissedAlert.alert_key.in_([a["alert_key"] for a in all_alerts]))
+        .all()
+    }
+    return [a for a in all_alerts if a["alert_key"] not in dismissed_keys]
+
 
 @router.get("/stats", response_model=DashboardStats)
 def get_stats(db: Session = Depends(get_db), _=Depends(get_current_user)):
@@ -25,11 +82,7 @@ def get_stats(db: Session = Depends(get_db), _=Depends(get_current_user)):
     online = db.query(func.count(Device.id)).filter(Device.status == DeviceStatus.ONLINE).scalar() or 0
     offline = db.query(func.count(Device.id)).filter(Device.status == DeviceStatus.OFFLINE).scalar() or 0
 
-    threshold = datetime.now(TIMEZONE_BR) - timedelta(hours=24)
-    alerts = db.query(func.count(Device.id)).filter(
-        Device.status == DeviceStatus.OFFLINE,
-        Device.last_seen < threshold
-    ).scalar() or 0
+    alerts = len(_get_active_alerts(db))
 
     week_ago = datetime.now(TIMEZONE_BR) - timedelta(days=7)
     recent_changes = db.query(func.count(HardwareChange.id)).filter(
@@ -57,6 +110,49 @@ def get_stats(db: Session = Depends(get_db), _=Depends(get_current_user)):
         alerts=alerts, recent_changes=recent_changes,
         avg_uptime_percent=avg_uptime, avg_offline_hours=avg_offline_hours,
     )
+
+
+@router.get("/alerts-detail")
+def get_alerts_detail(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    return _get_active_alerts(db)
+
+
+class DismissAlertRequest(BaseModel):
+    alert_key: str
+
+
+@router.post("/alerts/dismiss")
+def dismiss_alert(
+    data: DismissAlertRequest, db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    existing = db.query(DismissedAlert).filter(DismissedAlert.alert_key == data.alert_key).first()
+    if not existing:
+        db.add(DismissedAlert(alert_key=data.alert_key, dismissed_by=current_user.id))
+        db.commit()
+    return {"message": "Alerta dispensado"}
+
+
+@router.get("/alerts/dismissed")
+def list_dismissed_alerts(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    rows = (db.query(DismissedAlert)
+            .order_by(DismissedAlert.dismissed_at.desc()).all())
+    return [
+        {"id": r.id, "alert_key": r.alert_key,
+         "dismissed_by": r.user.username if r.user else None,
+         "dismissed_at": r.dismissed_at.isoformat()}
+        for r in rows
+    ]
+
+
+@router.delete("/alerts/dismissed/{dismissed_id}")
+def restore_alert(dismissed_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    row = db.query(DismissedAlert).filter(DismissedAlert.id == dismissed_id).first()
+    if not row:
+        raise HTTPException(404, "Registro não encontrado")
+    db.delete(row)
+    db.commit()
+    return {"message": "Alerta restaurado"}
 
 
 @router.get("/os-distribution", response_model=DashboardChartData)

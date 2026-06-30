@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Table, Tag, Input, Select, Space, Typography, Row, Col, Button } from 'antd';
 import { SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
-import { getDevices } from '../api/endpoints';
+import { getDevices, getBranches, getSectors } from '../api/endpoints';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { WSMessage } from '../hooks/useWebSocket';
 import type { Device } from '../types';
@@ -15,6 +15,10 @@ export default function DevicesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(searchParams.get('status') || undefined);
+  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
+  const [sectors, setSectors] = useState<{ id: number; name: string }[]>([]);
+  const [branchFilter, setBranchFilter] = useState<number | undefined>();
+  const [sectorFilter, setSectorFilter] = useState<number | undefined>();
   const [page, setPage] = useState(1);
   const navigate = useNavigate();
 
@@ -24,6 +28,8 @@ export default function DevicesPage() {
       const params: Record<string, string | number> = { page, page_size: 50 };
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
+      if (sectorFilter) params.sector_id = sectorFilter;
+      else if (branchFilter) params.branch_id = branchFilter;
       const { data } = await getDevices(params);
       setDevices(data);
     } catch (err) {
@@ -33,7 +39,27 @@ export default function DevicesPage() {
     }
   };
 
-  useEffect(() => { loadDevices(); }, [page, statusFilter]);
+  useEffect(() => { loadDevices(); }, [page, statusFilter, branchFilter, sectorFilter]);
+
+  useEffect(() => {
+    getBranches().then(({ data }) => setBranches(data)).catch(() => {});
+  }, []);
+
+  const handleBranchChange = async (id: number | undefined) => {
+    setBranchFilter(id);
+    setSectorFilter(undefined);
+    setSectors([]);
+    if (id) {
+      const { data } = await getSectors(id);
+      setSectors(data);
+    }
+  };
+
+  const locationShort = (path?: string | null) => {
+    if (!path) return '-';
+    const parts = path.split(' > ');
+    return parts.slice(-2).join(' > ');
+  };
 
   // WebSocket: update device rows in-place
   const handleWsMessage = useCallback((msg: WSMessage) => {
@@ -97,7 +123,8 @@ export default function DevicesPage() {
         </Tag>
       ),
     },
-    { title: 'Localização', dataIndex: 'location_path', key: 'location', ellipsis: true, width: 180 },
+    { title: 'Localização', dataIndex: 'location_path', key: 'location', ellipsis: true, width: 180,
+      render: (v: string) => locationShort(v) },
     {
       title: 'Última Comunicação', dataIndex: 'last_seen', key: 'last_seen', width: 170,
       render: (v: string) => v ? new Date(v).toLocaleString('pt-BR') : '-',
@@ -133,6 +160,27 @@ export default function DevicesPage() {
                 { value: 'offline', label: 'Offline' },
                 { value: 'unknown', label: 'Desconhecido' },
               ]}
+            />
+          </Col>
+          <Col>
+            <Select
+              placeholder="Andar"
+              allowClear
+              style={{ width: 160 }}
+              value={branchFilter}
+              onChange={handleBranchChange}
+              options={branches.map((b) => ({ value: b.id, label: b.name }))}
+            />
+          </Col>
+          <Col>
+            <Select
+              placeholder="Setor"
+              allowClear
+              style={{ width: 160 }}
+              value={sectorFilter}
+              onChange={setSectorFilter}
+              disabled={!sectors.length}
+              options={sectors.map((s) => ({ value: s.id, label: s.name }))}
             />
           </Col>
           <Col>

@@ -7,10 +7,12 @@ import {
 import {
   DownloadOutlined, ReloadOutlined, SearchOutlined,
   DesktopOutlined, HddOutlined, WifiOutlined, PrinterOutlined,
-  AppstoreOutlined, ToolOutlined,
+  AppstoreOutlined, ToolOutlined, HistoryOutlined, ClockCircleOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
-import { getDevices } from '../api/endpoints';
+import { getDevices, getHardwareChangesStats, getDashboardStats } from '../api/endpoints';
 import api from '../api/client';
+import AlertsModal from '../components/common/AlertsModal';
 import type { Device } from '../types';
 
 const { Title, Text } = Typography;
@@ -35,12 +37,39 @@ interface InventoryDevice extends Omit<Device, 'os_name' | 'cpu_model'> {
   services_count?: number;
 }
 
+interface HwChangesStats {
+  total: number;
+  last_24h: number;
+  last_7d: number;
+  last_30d: number;
+  devices_affected: number;
+  last_change: string | null;
+}
+
 export default function InventoryPage() {
   const [devices, setDevices] = useState<InventoryDevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [hwStats, setHwStats] = useState<HwChangesStats | null>(null);
+  const [exportingHw, setExportingHw] = useState<string | null>(null);
+  const [alertsCount, setAlertsCount] = useState(0);
+  const [alertsModalOpen, setAlertsModalOpen] = useState(false);
   const navigate = useNavigate();
+
+  const loadHwStats = async () => {
+    try {
+      const { data } = await getHardwareChangesStats();
+      setHwStats(data);
+    } catch (err) { console.error(err); }
+  };
+
+  const loadAlertsCount = async () => {
+    try {
+      const { data } = await getDashboardStats();
+      setAlertsCount(data.alerts);
+    } catch (err) { console.error(err); }
+  };
 
   const loadInventory = async () => {
     setLoading(true);
@@ -85,6 +114,32 @@ export default function InventoryPage() {
   };
 
   useEffect(() => { loadInventory(); }, [statusFilter]);
+  useEffect(() => { loadHwStats(); }, []);
+  useEffect(() => { loadAlertsCount(); }, []);
+
+  const handleExportHardwareChanges = async (days?: number) => {
+    const key = days ? `${days}d` : 'full';
+    setExportingHw(key);
+    const token = localStorage.getItem('access_token');
+    try {
+      const url = days ? `/api/devices/hardware-changes/export?days=${days}` : '/api/devices/hardware-changes/export';
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) { message.error('Erro ao exportar histórico'); return; }
+      const blob = await response.blob();
+      const objUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      const suffix = days ? `_${days}dias` : '_completo';
+      a.download = `historico_alteracoes_hardware${suffix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(objUrl);
+      message.success('Histórico de alterações exportado com sucesso');
+    } catch {
+      message.error('Erro ao exportar histórico de alterações');
+    } finally {
+      setExportingHw(null);
+    }
+  };
 
   const handleExport = async () => {
     const token = localStorage.getItem('access_token');
@@ -230,28 +285,77 @@ export default function InventoryPage() {
 
       {/* Summary cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={12} sm={8}>
+        <Col xs={12} sm={6}>
           <Card style={{ ...cardStyle, borderTop: '3px solid #1565FF', height: '100%' }}>
             <Statistic title={<span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Total de Ativos</span>}
               value={devices.length} prefix={<DesktopOutlined style={{ color: '#1565FF' }} />}
               valueStyle={{ color: 'var(--text)', fontWeight: 700 }} />
           </Card>
         </Col>
-        <Col xs={12} sm={8}>
+        <Col xs={12} sm={6}>
           <Card style={{ ...cardStyle, borderTop: '3px solid #00BFA5', height: '100%' }}>
             <Statistic title={<span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Online</span>}
               value={online} prefix={<WifiOutlined style={{ color: '#00BFA5' }} />}
               valueStyle={{ color: 'var(--text)', fontWeight: 700 }} />
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col xs={12} sm={6}>
           <Card style={{ ...cardStyle, borderTop: '3px solid #FF4D4F', height: '100%' }}>
             <Statistic title={<span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Offline</span>}
               value={offline} prefix={<DesktopOutlined style={{ color: '#FF4D4F' }} />}
               valueStyle={{ color: 'var(--text)', fontWeight: 700 }} />
           </Card>
         </Col>
+        <Col xs={12} sm={6}>
+          <Card hoverable onClick={() => setAlertsModalOpen(true)}
+            style={{ ...cardStyle, borderTop: '3px solid #FFB020', height: '100%', cursor: 'pointer' }}>
+            <Statistic title={<span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Alertas</span>}
+              value={alertsCount} prefix={<WarningOutlined style={{ color: '#FFB020' }} />}
+              valueStyle={{ color: 'var(--text)', fontWeight: 700 }} />
+          </Card>
+        </Col>
       </Row>
+
+      {/* Histórico de Alterações de Hardware */}
+      <Card style={{ ...cardStyle, marginBottom: 16 }}
+        title={<span style={{ color: 'var(--text)' }}><HistoryOutlined style={{ marginRight: 8 }} />Histórico de Alterações de Hardware</span>}
+        styles={{ header: { borderBottom: '1px solid var(--border)' } }}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col xs={12} sm={6} md={4}>
+            <Statistic title={<span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>Total de Registros</span>}
+              value={hwStats?.total ?? 0} valueStyle={{ color: 'var(--text)', fontWeight: 700, fontSize: 20 }} />
+          </Col>
+          <Col xs={12} sm={6} md={4}>
+            <Statistic title={<span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>Últimas 24h</span>}
+              value={hwStats?.last_24h ?? 0} valueStyle={{ color: '#0EA5E9', fontWeight: 700, fontSize: 20 }} />
+          </Col>
+          <Col xs={12} sm={6} md={4}>
+            <Statistic title={<span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>Últimos 7 dias</span>}
+              value={hwStats?.last_7d ?? 0} valueStyle={{ color: '#1565FF', fontWeight: 700, fontSize: 20 }} />
+          </Col>
+          <Col xs={12} sm={6} md={4}>
+            <Statistic title={<span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>Últimos 30 dias</span>}
+              value={hwStats?.last_30d ?? 0} valueStyle={{ color: '#7C3AED', fontWeight: 700, fontSize: 20 }} />
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <div style={{ marginBottom: 4 }}>
+              <Text style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
+                <ClockCircleOutlined style={{ marginRight: 4 }} />
+                Última alteração: {hwStats?.last_change ? new Date(hwStats.last_change).toLocaleString('pt-BR') : '-'}
+                {' · '}{hwStats?.devices_affected ?? 0} dispositivo(s) com histórico
+              </Text>
+            </div>
+            <Space wrap>
+              <Button size="small" icon={<DownloadOutlined />} loading={exportingHw === '7d'}
+                onClick={() => handleExportHardwareChanges(7)}>7 dias</Button>
+              <Button size="small" icon={<DownloadOutlined />} loading={exportingHw === '30d'}
+                onClick={() => handleExportHardwareChanges(30)}>30 dias</Button>
+              <Button size="small" type="primary" icon={<DownloadOutlined />} loading={exportingHw === 'full'}
+                onClick={() => handleExportHardwareChanges()}>Histórico Completo</Button>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
 
       {/* Filters */}
       <Card style={{ ...cardStyle, marginBottom: 16 }}>
@@ -279,6 +383,8 @@ export default function InventoryPage() {
       <Card style={cardStyle}>
         <Tabs items={tabItems} />
       </Card>
+
+      <AlertsModal open={alertsModalOpen} onClose={() => setAlertsModalOpen(false)} onChanged={loadAlertsCount} />
     </div>
   );
 }

@@ -1,20 +1,24 @@
+from datetime import datetime, timedelta
 from io import BytesIO
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload, subqueryload
 
+from app.config import TIMEZONE_BR
 from app.database import get_db
 from app.models.device import Device, DeviceStatus
 from app.models.inventory import DeviceOS, DeviceCPU, DeviceRAM, DeviceSoftware, DeviceService
 from app.models.tracking import HardwareChange
-from app.models.location import Room, Sector, Branch, Company, Unit
+from app.models.location import Sector, Branch, Company
 from app.models.user import User, UserRole
 from app.schemas.device import DeviceResponse, DeviceDetailResponse, DeviceUpdate, HardwareChangeResponse
 from app.schemas.device import SoftwareInfo, ServiceInfo
 from app.services.audit_service import log_action
+from app.utils.excel import xlsx_safe
 from app.utils.security import get_current_user, require_role
 
 router = APIRouter(prefix="/api/devices", tags=["Devices"])
@@ -36,7 +40,8 @@ def _build_location_path(db: Session, room_id: int | None) -> str | None:
 def list_devices(
     status: DeviceStatus | None = None,
     search: str | None = None,
-    unit_id: int | None = None,
+    company_id: int | None = None,
+    branch_id: int | None = None,
     sector_id: int | None = None,
     os_name: str | None = None,
     page: int = Query(1, ge=1),
@@ -52,12 +57,14 @@ def list_devices(
         query = query.filter(
             Device.hostname.ilike(pattern) | Device.current_user.ilike(pattern) | Device.agent_id.ilike(pattern)
         )
-    if unit_id:
-        query = (query.join(Room, Device.room_id == Room.id)
-                 .join(Sector).join(Branch).join(Company)
-                 .filter(Company.unit_id == unit_id))
     if sector_id:
-        query = query.join(Room, Device.room_id == Room.id).filter(Room.sector_id == sector_id)
+        query = query.filter(Device.room_id == sector_id)
+    elif branch_id:
+        query = query.join(Sector, Device.room_id == Sector.id).filter(Sector.branch_id == branch_id)
+    elif company_id:
+        query = (query.join(Sector, Device.room_id == Sector.id)
+                 .join(Branch, Sector.branch_id == Branch.id)
+                 .filter(Branch.company_id == company_id))
     if os_name:
         query = query.join(DeviceOS, Device.id == DeviceOS.device_id).filter(DeviceOS.name.ilike(f"%{os_name}%"))
 
@@ -164,7 +171,7 @@ def export_devices(db: Session = Depends(get_db), _=Depends(get_current_user)):
         ]
 
         for col_idx, value in enumerate(row_data, 1):
-            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            cell = ws.cell(row=row_idx, column=col_idx, value=xlsx_safe(value))
             cell.border = thin_border
 
     for col_idx in range(1, len(headers) + 1):
@@ -182,6 +189,94 @@ def export_devices(db: Session = Depends(get_db), _=Depends(get_current_user)):
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=dispositivos.xlsx"},
+    )
+
+
+@router.get("/hardware-changes/stats")
+def get_hardware_changes_stats(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    now = datetime.now(TIMEZONE_BR)
+    total = db.query(func.count(HardwareChange.id)).scalar() or 0
+    last_24h = db.query(func.count(HardwareChange.id)).filter(
+        HardwareChange.detected_at >= now - timedelta(hours=24)
+    ).scalar() or 0
+    last_7d = db.query(func.count(HardwareChange.id)).filter(
+        HardwareChange.detected_at >= now - timedelta(days=7)
+    ).scalar() or 0
+    last_30d = db.query(func.count(HardwareChange.id)).filter(
+        HardwareChange.detected_at >= now - timedelta(days=30)
+    ).scalar() or 0
+    devices_affected = db.query(func.count(func.distinct(HardwareChange.device_id))).scalar() or 0
+    last_change = db.query(func.max(HardwareChange.detected_at)).scalar()
+
+    return {
+        "total": total,
+        "last_24h": last_24h,
+        "last_7d": last_7d,
+        "last_30d": last_30d,
+        "devices_affected": devices_affected,
+        "last_change": last_change.isoformat() if last_change else None,
+    }
+
+
+@router.get("/hardware-changes/export")
+def export_hardware_changes(
+    days: int | None = Query(None, ge=1, description="Limitar aos últimos N dias (vazio = histórico completo)"),
+    db: Session = Depends(get_db), _=Depends(get_current_user),
+):
+    query = db.query(HardwareChange, Device.hostname).join(Device, Device.id == HardwareChange.device_id)
+    if days:
+        since = datetime.now(TIMEZONE_BR) - timedelta(days=days)
+        query = query.filter(HardwareChange.detected_at >= since)
+    rows = query.order_by(HardwareChange.detected_at.desc()).all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Histórico de Alterações"
+
+    headers = ["Data/Hora", "Hostname", "Componente", "Campo", "Valor Anterior", "Valor Novo"]
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="2B5797", end_color="2B5797", fill_type="solid")
+    thin_border = Border(
+        left=Side(style="thin"), right=Side(style="thin"),
+        top=Side(style="thin"), bottom=Side(style="thin"),
+    )
+
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = thin_border
+
+    for row_idx, (change, hostname) in enumerate(rows, 2):
+        row_data = [
+            change.detected_at.strftime("%d/%m/%Y %H:%M:%S") if change.detected_at else "",
+            hostname,
+            change.component,
+            change.field_name,
+            change.old_value or "(vazio)",
+            change.new_value or "(vazio)",
+        ]
+        for col_idx, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=xlsx_safe(value))
+            cell.border = thin_border
+
+    for col_idx in range(1, len(headers) + 1):
+        max_len = max(
+            (len(str(ws.cell(row=r, column=col_idx).value or "")) for r in range(1, min(ws.max_row, 500) + 1)),
+            default=10,
+        )
+        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = min(max_len + 3, 50)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    suffix = f"_{days}dias" if days else "_completo"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=historico_alteracoes_hardware{suffix}.xlsx"},
     )
 
 

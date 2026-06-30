@@ -35,6 +35,8 @@ export const getDeviceSoftware = (id: number) =>
   api.get<SoftwareInfo[]>(`/devices/${id}/software`);
 export const getDeviceServices = (id: number) =>
   api.get<ServiceInfo[]>(`/devices/${id}/services`);
+export const getHardwareChangesStats = () =>
+  api.get<{ total: number; last_24h: number; last_7d: number; last_30d: number; devices_affected: number; last_change: string | null }>('/devices/hardware-changes/stats');
 
 // Dashboard
 export const getDashboardStats = () =>
@@ -69,6 +71,14 @@ export const getDevicesPerFloor = () =>
   api.get<any[]>('/dashboard/devices-per-floor');
 export const getDevicesByFloor = (branchId: number) =>
   api.get<any[]>('/dashboard/devices-by-floor', { params: { branch_id: branchId } });
+export const getAlertsDetail = () =>
+  api.get<{ alert_key: string; id: number; hostname: string; reason: string; detail: string }[]>('/dashboard/alerts-detail');
+export const dismissAlert = (alertKey: string) =>
+  api.post('/dashboard/alerts/dismiss', { alert_key: alertKey });
+export const getDismissedAlerts = () =>
+  api.get<{ id: number; alert_key: string; dismissed_by: string | null; dismissed_at: string }[]>('/dashboard/alerts/dismissed');
+export const restoreAlert = (dismissedId: number) =>
+  api.delete(`/dashboard/alerts/dismissed/${dismissedId}`);
 
 // Locations
 export const getLocationTree = () =>
@@ -133,6 +143,10 @@ export const collectPrinterCounter = (id: number) =>
   api.post(`/printers/${id}/collect`);
 export const collectAllCounters = () =>
   api.post('/printers/collect-all');
+export const getPrinterSchedule = () =>
+  api.get<{ enabled: boolean; interval_minutes: number; last_run: string | null }>('/printers/schedule');
+export const updatePrinterSchedule = (data: { enabled: boolean; interval_minutes: number }) =>
+  api.put('/printers/schedule', data);
 export const getPrinterHistory = (id: number) =>
   api.get<any[]>(`/printers/${id}/history`);
 export const getPrinterRanking = (top = 10) =>

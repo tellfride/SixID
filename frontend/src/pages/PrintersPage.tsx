@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
   Card, Table, Tag, Typography, Button, Space, Modal, Form, Input,
-  InputNumber, Select, Tabs, message, Row, Col, Statistic, Popconfirm, Badge, Spin,
+  InputNumber, Select, Tabs, message, Row, Col, Statistic, Popconfirm, Badge, Spin, Switch,
 } from 'antd';
 import {
   PrinterOutlined, ReloadOutlined, PlusOutlined, ThunderboltOutlined,
   BarChartOutlined, InboxOutlined, HistoryOutlined, DownloadOutlined,
   DashboardOutlined, FileTextOutlined, ExperimentOutlined, SwapOutlined,
+  ClockCircleOutlined, SettingOutlined,
 } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
@@ -18,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   getPrinters, createPrinter, updatePrinter, deletePrinter,
   pingPrinter, collectPrinterCounter, collectAllCounters, getPrinterRanking,
+  getPrinterSchedule, updatePrinterSchedule,
   registerTonerChange, getTonerHistory, getTonerStock, createTonerStock,
   restockToner, getStockLogs, getPrinterHistory, getPrinterDashboard,
 } from '../api/endpoints';
@@ -80,25 +82,52 @@ export default function PrintersPage() {
     }
   };
   const [dispenseModalOpen, setDispenseModalOpen] = useState(false);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [schedule, setSchedule] = useState<{ enabled: boolean; interval_minutes: number; last_run: string | null } | null>(null);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
   const [form] = Form.useForm();
   const [tonerForm] = Form.useForm();
   const [stockForm] = Form.useForm();
   const [restockForm] = Form.useForm();
   const [dispenseForm] = Form.useForm();
+  const [scheduleForm] = Form.useForm();
 
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [pRes, rRes, sRes, lRes, dRes] = await Promise.all([
+      const [pRes, rRes, sRes, lRes, dRes, schRes] = await Promise.all([
         getPrinters(), getPrinterRanking(rankingTop), getTonerStock(), getStockLogs(), getPrinterDashboard(),
+        getPrinterSchedule(),
       ]);
       setPrinters(pRes.data);
       setRanking(rRes.data);
       setStock(sRes.data);
       setStockLogs(lRes.data);
       setDashData(dRes.data);
+      setSchedule(schRes.data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
+  };
+
+  const openScheduleModal = () => {
+    scheduleForm.setFieldsValue({
+      enabled: schedule?.enabled ?? false,
+      interval_minutes: schedule?.interval_minutes ?? 60,
+    });
+    setScheduleModalOpen(true);
+  };
+
+  const handleSaveSchedule = async (values: { enabled: boolean; interval_minutes: number }) => {
+    setScheduleSaving(true);
+    try {
+      await updatePrinterSchedule(values);
+      message.success(values.enabled
+        ? `Coleta automática ativada a cada ${values.interval_minutes} minutos`
+        : 'Coleta automática desativada');
+      setScheduleModalOpen(false);
+      loadAll();
+    } catch (e: any) { message.error(e.response?.data?.detail || 'Erro ao salvar agendamento'); }
+    finally { setScheduleSaving(false); }
   };
 
   useEffect(() => { loadAll(); }, [rankingTop]);
@@ -622,6 +651,10 @@ export default function PrintersPage() {
               Cadastrar Impressora
             </Button>
             <Button icon={<ThunderboltOutlined />} onClick={handleCollectAll}>Coletar Todas (SNMP)</Button>
+            <Button icon={<ClockCircleOutlined />} onClick={openScheduleModal}
+              style={schedule?.enabled ? { borderColor: '#00BFA5', color: '#00BFA5' } : undefined}>
+              Coleta Personalizada {schedule?.enabled ? `(a cada ${schedule.interval_minutes}min)` : ''}
+            </Button>
           </Space>
           <Table dataSource={printers} columns={printerColumns} rowKey="id" size="small"
             loading={loading} scroll={{ x: 1400 }} pagination={{ pageSize: 15 }} />
@@ -787,6 +820,35 @@ export default function PrintersPage() {
           </Form.Item>
           <Form.Item name="quantity" label="Quantidade a adicionar" rules={[{ required: true }]}><InputNumber min={1} style={{ width: '100%' }} /></Form.Item>
           <Form.Item name="notes" label="Observações"><Input.TextArea rows={2} /></Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Modal coleta personalizada (agendamento automático) */}
+      <Modal title={<Space><SettingOutlined /><span>Coleta Automática Personalizada</span></Space>}
+        open={scheduleModalOpen} onCancel={() => setScheduleModalOpen(false)}
+        onOk={() => scheduleForm.submit()} okText="Salvar" confirmLoading={scheduleSaving}>
+        <Form form={scheduleForm} layout="vertical" onFinish={handleSaveSchedule}>
+          <Form.Item name="enabled" label="Ativar coleta automática" valuePropName="checked">
+            <Switch checkedChildren="Ativada" unCheckedChildren="Desativada" />
+          </Form.Item>
+          <Form.Item name="interval_minutes" label="Intervalo de coleta"
+            rules={[{ required: true }, { type: 'number', min: 5, message: 'Mínimo de 5 minutos' }]}>
+            <Select options={[
+              { value: 5, label: 'A cada 5 minutos' },
+              { value: 15, label: 'A cada 15 minutos' },
+              { value: 30, label: 'A cada 30 minutos' },
+              { value: 60, label: 'A cada 1 hora' },
+              { value: 180, label: 'A cada 3 horas' },
+              { value: 360, label: 'A cada 6 horas' },
+              { value: 720, label: 'A cada 12 horas' },
+              { value: 1440, label: 'A cada 24 horas' },
+            ]} />
+          </Form.Item>
+          {schedule?.last_run && (
+            <Text style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+              Última coleta automática: {new Date(schedule.last_run).toLocaleString('pt-BR')}
+            </Text>
+          )}
         </Form>
       </Modal>
 
