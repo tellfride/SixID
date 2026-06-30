@@ -97,20 +97,58 @@ def _launch_in_user_session(command: str, session_id: int) -> bool:
 
 def _create_block_script():
     os.makedirs(LOCK_DIR, exist_ok=True)
-    script = (
-        'Add-Type -TypeDefinition @"\n'
-        'using System;\n'
-        'using System.Runtime.InteropServices;\n'
-        'public class SysID9Block {\n'
-        '    [DllImport("user32.dll")]\n'
-        '    public static extern bool BlockInput(bool fBlockIt);\n'
-        '}\n'
-        '"@\n'
-        'while ($true) {\n'
-        '    [SysID9Block]::BlockInput($true)\n'
-        '    Start-Sleep -Milliseconds 400\n'
-        '}\n'
-    )
+    # Low-level keyboard/mouse hooks (WH_KEYBOARD_LL / WH_MOUSE_LL) swallow
+    # every event before it reaches any window. This works reliably even
+    # where the legacy BlockInput() API is silently ignored by the OS/UIPI.
+    script = r'''
+Add-Type -Language CSharp -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+using System.Windows.Forms;
+
+public class SysID9Hook {
+    public delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    public static extern IntPtr SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hMod, uint dwThreadId);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    public static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetModuleHandle(string lpModuleName);
+
+    public static IntPtr kbHookId = IntPtr.Zero;
+    public static IntPtr msHookId = IntPtr.Zero;
+    public static HookProc kbProc;
+    public static HookProc msProc;
+
+    public static IntPtr KeyboardHook(int nCode, IntPtr wParam, IntPtr lParam) {
+        if (nCode >= 0) { return (IntPtr)1; }
+        return CallNextHookEx(kbHookId, nCode, wParam, lParam);
+    }
+
+    public static IntPtr MouseHook(int nCode, IntPtr wParam, IntPtr lParam) {
+        if (nCode >= 0) { return (IntPtr)1; }
+        return CallNextHookEx(msHookId, nCode, wParam, lParam);
+    }
+
+    public static void Install() {
+        kbProc = KeyboardHook;
+        msProc = MouseHook;
+        IntPtr hMod = GetModuleHandle(null);
+        kbHookId = SetWindowsHookEx(13, kbProc, hMod, 0);
+        msHookId = SetWindowsHookEx(14, msProc, hMod, 0);
+    }
+}
+"@ -ReferencedAssemblies System.Windows.Forms
+
+[SysID9Hook]::Install()
+[System.Windows.Forms.Application]::Run()
+'''
     with open(SCRIPT_PATH, "w") as f:
         f.write(script)
 
