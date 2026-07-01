@@ -27,6 +27,7 @@ class Printer(Base):
 
     counters: Mapped[list["PrinterCounter"]] = relationship(back_populates="printer", cascade="all, delete-orphan")
     toner_changes: Mapped[list["TonerChange"]] = relationship(back_populates="printer", cascade="all, delete-orphan")
+    tickets: Mapped[list["PrinterTicket"]] = relationship(back_populates="printer", cascade="all, delete-orphan")
 
 
 class PrinterCounter(Base):
@@ -82,6 +83,23 @@ class TonerStockLog(Base):
 
     user = relationship("User")
     printer = relationship("Printer")
+
+
+class PrinterTicket(Base):
+    __tablename__ = "printer_tickets"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    os_number: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    printer_id: Mapped[int] = mapped_column(ForeignKey("printers.id", ondelete="CASCADE"), index=True)
+    opened_by: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="aberto")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TIMEZONE_BR))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    closed_by: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    resolution: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    printer = relationship("Printer", back_populates="tickets")
 
 
 class PrinterCollectionSchedule(Base):

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.config import TIMEZONE_BR
 from app.database import get_db
-from app.models.printer import Printer, PrinterCounter, TonerChange, TonerStock, TonerStockLog, PrinterCollectionSchedule
+from app.models.printer import Printer, PrinterCounter, TonerChange, TonerStock, TonerStockLog, PrinterCollectionSchedule, PrinterTicket
 from app.models.user import User, UserRole
 from app.services.audit_service import log_action
 from app.utils.excel import xlsx_safe
@@ -63,6 +63,22 @@ class TonerChangeCreate(BaseModel):
     toner_model: str
     pages_at_change: int | None = None
     notes: str | None = None
+
+
+class TicketCreate(BaseModel):
+    opened_by: str
+    description: str
+
+
+class TicketClose(BaseModel):
+    closed_by: str
+    resolution: str | None = None
+
+
+class TicketUpdate(BaseModel):
+    status: str | None = None
+    resolution: str | None = None
+    closed_by: str | None = None
 
 
 class TonerStockCreate(BaseModel):
@@ -370,12 +386,17 @@ def get_printer_dashboard(db: Session = Depends(get_db), _=Depends(get_current_u
     toners_week = sum(r["count"] for r in daily_toners)
     toners_month = sum(r["count"] for r in weekly_toners)
 
+    open_tickets = db.query(func.count(PrinterTicket.id)).filter(PrinterTicket.status == "aberto").scalar() or 0
+    total_tickets = db.query(func.count(PrinterTicket.id)).scalar() or 0
+
     return {
         "total_printers": len(printers),
         "total_pages": total_pages,
         "total_toner_changes": total_toner_changes,
         "total_stock": total_stock,
         "low_stock_count": low_stock_count,
+        "open_tickets": open_tickets,
+        "total_tickets": total_tickets,
         "pages_per_printer": sorted(pages_per_printer, key=lambda x: x["pages"], reverse=True),
         "toner_per_printer": sorted(toner_per_printer, key=lambda x: x["toner_changes"], reverse=True),
         "toner_by_model": toner_by_model,
@@ -821,4 +842,189 @@ def export_toner_logs(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename=dispensacao_toner_{datetime.now().strftime('%Y%m%d')}.xlsx"},
+    )
+
+
+# ── Chamados Técnicos ──
+
+def _ticket_row(t: PrinterTicket) -> dict:
+    p = t.printer
+    return {
+        "id": t.id,
+        "os_number": t.os_number,
+        "printer_id": t.printer_id,
+        "printer_name": p.name if p else "",
+        "printer_location": p.location if p else "",
+        "printer_sector": p.sector if p else "",
+        "printer_number": p.printer_number if p else "",
+        "opened_by": t.opened_by,
+        "description": t.description,
+        "status": t.status,
+        "created_at": t.created_at.isoformat() if t.created_at else None,
+        "closed_at": t.closed_at.isoformat() if t.closed_at else None,
+        "closed_by": t.closed_by,
+        "resolution": t.resolution,
+    }
+
+
+@router.get("/tickets")
+def list_tickets(
+    printer_id: int | None = Query(default=None),
+    status: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    q = db.query(PrinterTicket).join(Printer)
+    if printer_id:
+        q = q.filter(PrinterTicket.printer_id == printer_id)
+    if status:
+        q = q.filter(PrinterTicket.status == status)
+    q = q.order_by(PrinterTicket.created_at.desc())
+    return [_ticket_row(t) for t in q.all()]
+
+
+@router.post("/{printer_id}/tickets")
+def create_ticket(
+    printer_id: int,
+    data: TicketCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    printer = db.query(Printer).filter(Printer.id == printer_id).first()
+    if not printer:
+        raise HTTPException(404, "Impressora não encontrada")
+
+    ticket = PrinterTicket(
+        os_number="TEMP",
+        printer_id=printer_id,
+        opened_by=data.opened_by,
+        description=data.description,
+        status="aberto",
+    )
+    db.add(ticket)
+    db.flush()
+
+    year = datetime.now(TIMEZONE_BR).year
+    ticket.os_number = f"OS-{year}-{ticket.id:04d}"
+    db.commit()
+    db.refresh(ticket)
+
+    log_action(db, current_user.id, "create_ticket", "printer_ticket", ticket.id,
+               {"os_number": ticket.os_number, "printer_id": printer_id})
+
+    return _ticket_row(ticket)
+
+
+@router.put("/tickets/{ticket_id}")
+def update_ticket(
+    ticket_id: int,
+    data: TicketUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ticket = db.query(PrinterTicket).filter(PrinterTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(404, "Chamado não encontrado")
+
+    if data.status is not None:
+        ticket.status = data.status
+        if data.status == "fechado" and not ticket.closed_at:
+            ticket.closed_at = datetime.now(TIMEZONE_BR)
+        elif data.status == "aberto":
+            ticket.closed_at = None
+            ticket.closed_by = None
+    if data.resolution is not None:
+        ticket.resolution = data.resolution
+    if data.closed_by is not None:
+        ticket.closed_by = data.closed_by
+
+    db.commit()
+    db.refresh(ticket)
+    return _ticket_row(ticket)
+
+
+@router.delete("/tickets/{ticket_id}")
+def delete_ticket(
+    ticket_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TECHNICIAN)),
+):
+    ticket = db.query(PrinterTicket).filter(PrinterTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(404, "Chamado não encontrado")
+    db.delete(ticket)
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/tickets/export")
+def export_tickets(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    tickets = (
+        db.query(PrinterTicket)
+        .join(Printer)
+        .order_by(PrinterTicket.created_at.desc())
+        .all()
+    )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Chamados Técnicos"
+
+    headers = ["Nº OS", "Impressora", "Local", "Setor", "N.Impressora",
+               "Aberto por", "Descrição", "Status",
+               "Data Abertura", "Data Fechamento", "Fechado por", "Resolução"]
+
+    hfill = PatternFill("solid", fgColor="1565FF")
+    hfont = Font(bold=True, color="FFFFFF")
+    thin = Border(
+        left=Side(style="thin"), right=Side(style="thin"),
+        top=Side(style="thin"), bottom=Side(style="thin"),
+    )
+
+    for ci, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=ci, value=h)
+        cell.fill = hfill
+        cell.font = hfont
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = thin
+
+    for ri, t in enumerate(tickets, 2):
+        p = t.printer
+        row = [
+            t.os_number,
+            p.name if p else "",
+            p.location if p else "",
+            p.sector if p else "",
+            p.printer_number if p else "",
+            t.opened_by,
+            t.description,
+            t.status,
+            t.created_at.strftime("%d/%m/%Y %H:%M") if t.created_at else "",
+            t.closed_at.strftime("%d/%m/%Y %H:%M") if t.closed_at else "",
+            t.closed_by or "",
+            t.resolution or "",
+        ]
+        for ci, val in enumerate(row, 1):
+            cell = ws.cell(row=ri, column=ci, value=xlsx_safe(val))
+            cell.border = thin
+
+    for ci in range(1, len(headers) + 1):
+        max_len = max(
+            (len(str(ws.cell(row=r, column=ci).value or "")) for r in range(1, ws.max_row + 1)),
+            default=10,
+        )
+        ws.column_dimensions[ws.cell(row=1, column=ci).column_letter].width = min(max_len + 3, 40)
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    fname = f"chamados_tecnicos_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
     )

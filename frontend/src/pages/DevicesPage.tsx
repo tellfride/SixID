@@ -205,6 +205,7 @@ export default function DevicesPage() {
             showSizeChanger: false,
           }}
           size="middle"
+          scroll={{ x: 900 }}
           onRow={(record) => ({
             onClick: () => navigate(`/devices/${record.id}`),
             style: { cursor: 'pointer' },

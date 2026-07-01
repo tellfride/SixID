@@ -2,12 +2,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Card, Descriptions, Tabs, Table, Tag, Typography, Button, Space,
-  Spin, Timeline, Modal, Input, Select, message, Row, Col, Progress, Popconfirm,
+  Spin, Timeline, Modal, Input, Select, message, Row, Col, Progress, Popconfirm, Grid,
 } from 'antd';
 import {
   ArrowLeftOutlined, DesktopOutlined, LockOutlined, UnlockOutlined,
   PlayCircleOutlined, DeleteOutlined, EnvironmentOutlined,
 } from '@ant-design/icons';
+import { QRCodeSVG } from 'qrcode.react';
 import { getDevice, getDeviceChanges, getDeviceSoftware, getDeviceServices,
   initiateVnc, lockScreen, unlockScreen, deleteDevice, getRoomsFlat, updateDevice, sendCommand } from '../api/endpoints';
 import { useAuthStore } from '../store/authStore';
@@ -22,6 +23,8 @@ export default function DeviceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.sm;
   const [device, setDevice] = useState<DeviceDetail | null>(null);
   const [changes, setChanges] = useState<HardwareChange[]>([]);
   const [software, setSoftware] = useState<SoftwareInfo[]>([]);
@@ -256,7 +259,7 @@ export default function DeviceDetailPage() {
             </Row>
           </Card>
           <Card size="small" title="Slots de Memória" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border)', borderRadius: 10 }}>
-            <Table dataSource={device.ram_slots} rowKey="slot" pagination={false} size="small"
+            <Table dataSource={device.ram_slots} rowKey="slot" pagination={false} size="small" scroll={{ x: 500 }}
               columns={[
                 { title: 'Slot', dataIndex: 'slot' },
                 { title: 'Tamanho', dataIndex: 'size_gb', render: (v: number) => v ? `${v} GB` : '-' },
@@ -272,7 +275,7 @@ export default function DeviceDetailPage() {
       key: 'storage',
       label: 'Armazenamento',
       children: (
-        <Table dataSource={device.storage} rowKey="serial" pagination={false} size="small"
+        <Table dataSource={device.storage} rowKey="serial" pagination={false} size="small" scroll={{ x: 700 }}
           columns={[
             { title: 'Tipo', dataIndex: 'media_type', render: (v: string) => <Tag color={v === 'NVMe' ? 'purple' : v === 'SSD' ? 'blue' : 'default'}>{v}</Tag> },
             { title: 'Modelo', dataIndex: 'model' },
@@ -288,7 +291,7 @@ export default function DeviceDetailPage() {
       key: 'network',
       label: 'Rede',
       children: (
-        <Table dataSource={device.networks} rowKey="mac_address" pagination={false} size="small"
+        <Table dataSource={device.networks} rowKey="mac_address" pagination={false} size="small" scroll={{ x: 600 }}
           columns={[
             { title: 'Adaptador', dataIndex: 'adapter_name' },
             { title: 'IP', dataIndex: 'ip_address' },
@@ -304,9 +307,9 @@ export default function DeviceDetailPage() {
       label: 'Periféricos',
       children: (
         <Row gutter={[16, 16]}>
-          <Col span={12}>
+          <Col xs={24} sm={12}>
             <Card size="small" title="Monitores" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border)', borderRadius: 10 }}>
-              <Table dataSource={device.monitors} rowKey="serial" pagination={false} size="small"
+              <Table dataSource={device.monitors} rowKey="serial" pagination={false} size="small" scroll={{ x: 360 }}
                 columns={[
                   { title: 'Fabricante', dataIndex: 'manufacturer' },
                   { title: 'Modelo', dataIndex: 'model' },
@@ -314,9 +317,9 @@ export default function DeviceDetailPage() {
                 ]} />
             </Card>
           </Col>
-          <Col span={12}>
+          <Col xs={24} sm={12}>
             <Card size="small" title="Impressoras" style={{ background: 'var(--bg-card-inner)', border: '1px solid var(--border)', borderRadius: 10 }}>
-              <Table dataSource={device.printers} rowKey="name" pagination={false} size="small"
+              <Table dataSource={device.printers} rowKey="name" pagination={false} size="small" scroll={{ x: 360 }}
                 columns={[
                   { title: 'Nome', dataIndex: 'name' },
                   { title: 'Driver', dataIndex: 'driver' },
@@ -332,7 +335,7 @@ export default function DeviceDetailPage() {
       key: 'software',
       label: `Software (${software.length})`,
       children: (
-        <Table dataSource={software} rowKey="name" size="small"
+        <Table dataSource={software} rowKey="name" size="small" scroll={{ x: 600 }}
           pagination={{ pageSize: 20 }}
           columns={[
             { title: 'Nome', dataIndex: 'name', sorter: (a: SoftwareInfo, b: SoftwareInfo) => (a.name || '').localeCompare(b.name || '') },
@@ -346,7 +349,7 @@ export default function DeviceDetailPage() {
       key: 'services',
       label: `Serviços (${services.length})`,
       children: (
-        <Table dataSource={services} rowKey="name" size="small"
+        <Table dataSource={services} rowKey="name" size="small" scroll={{ x: 500 }}
           pagination={{ pageSize: 20 }}
           columns={[
             { title: 'Nome', dataIndex: 'name' },
@@ -436,72 +439,124 @@ export default function DeviceDetailPage() {
       </Space>
 
       <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, marginBottom: 16 }}>
-        <Row justify="space-between" align="middle">
-          <Col>
-            <Space>
-              <DesktopOutlined style={{ fontSize: 28, color: '#1565FF' }} />
+        <Row gutter={[16, 16]} align="top" wrap={isMobile}>
+          {/* ── Coluna esquerda: identidade + info ── */}
+          <Col flex="auto">
+            {/* Cabeçalho: ícone + hostname + status */}
+            <Space align="center" style={{ marginBottom: 12 }}>
+              <DesktopOutlined style={{ fontSize: 32, color: '#1565FF' }} />
               <div>
-                <Title level={4} style={{ margin: 0, color: 'var(--text)' }}>{device.hostname}</Title>
-                <Text type="secondary">{device.location_path || 'Sem localização definida'}</Text>
+                <Space align="center" style={{ gap: 8 }}>
+                  <Title level={4} style={{ margin: 0, color: 'var(--text)' }}>{device.hostname}</Title>
+                  <Tag color={device.status === 'online' ? 'green' : 'red'}>
+                    {device.status.toUpperCase()}
+                  </Tag>
+                </Space>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {device.location_path || 'Sem localização definida'}
+                </Text>
               </div>
-              <Tag color={device.status === 'online' ? 'green' : 'red'} style={{ marginLeft: 16 }}>
-                {device.status.toUpperCase()}
-              </Tag>
             </Space>
-          </Col>
-          <Col>
+
+            {/* Info resumo em grid */}
+            {(() => {
+              // Deduplica partições: agrupa por capacidade arredondada e tipo, mantém apenas disco físico único
+              const uniqueDisks = Object.values(
+                (device.storage || []).reduce((acc: Record<string, { type: string; gb: number; count: number }>, d) => {
+                  if (!d.capacity_gb) return acc;
+                  const gb = Math.round(d.capacity_gb);
+                  const type = d.media_type && d.media_type !== 'Unknown' ? d.media_type : 'HDD';
+                  const key = `${gb}-${type}`;
+                  if (!acc[key]) acc[key] = { type, gb, count: 0 };
+                  acc[key].count += 1;
+                  return acc;
+                }, {})
+              );
+              const storageText = uniqueDisks.length
+                ? uniqueDisks.map(d => `${d.type} ${d.gb} GB${d.count > 1 ? ` ×${d.count}` : ''}`).join(' · ')
+                : '-';
+
+              return (
+                <Row gutter={[0, 4]} style={{ marginBottom: 14 }}>
+                  {[
+                    { label: 'Agent ID',    value: device.agent_id },
+                    { label: 'Sistema',     value: device.os_info ? `${device.os_info.name || ''} ${device.os_info.version || ''}`.trim() : (device.os_name || '-') },
+                    { label: 'Usuário',     value: device.current_user || '-' },
+                    { label: 'Domínio',     value: device.domain || '-' },
+                    { label: 'CPU',         value: device.cpus?.[0]?.model || device.cpu_model || '-' },
+                    { label: 'RAM',         value: device.ram ? `${device.ram.total_gb} GB` : (device.ram_total_gb ? `${device.ram_total_gb} GB` : '-') },
+                    { label: 'Armazenamento', value: storageText },
+                    { label: 'Última Comunicação', value: device.last_seen ? new Date(device.last_seen).toLocaleString('pt-BR') : '-' },
+                  ].map(({ label, value }) => (
+                    <Col xs={24} sm={12} key={label}>
+                      <Text style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{label}: </Text>
+                      <Text style={{ color: 'var(--text)', fontSize: 11 }}>{value}</Text>
+                    </Col>
+                  ))}
+                </Row>
+              );
+            })()}
+
+            {/* Botões de ação */}
             {canRemote && (
-              <Space>
-                <Button icon={<EnvironmentOutlined />} onClick={handleOpenLocationModal}>
-                  Definir Localização
+              <Space wrap size={[6, 6]}>
+                <Button size="small" icon={<EnvironmentOutlined />} onClick={handleOpenLocationModal}>
+                  Localização
                 </Button>
-                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleVnc}>
-                  Acesso Remoto (VNC)
+                <Button size="small" type="primary" icon={<PlayCircleOutlined />} onClick={handleVnc}>
+                  Acesso Remoto
                 </Button>
-                <Button icon={<LockOutlined />} onClick={() => setLockModalOpen(true)} danger>
+                <Button size="small" icon={<LockOutlined />} onClick={() => setLockModalOpen(true)} danger>
                   Bloquear Tela
                 </Button>
-                <Button icon={<UnlockOutlined />} onClick={handleUnlock}>
+                <Button size="small" icon={<UnlockOutlined />} onClick={handleUnlock}>
                   Desbloquear
                 </Button>
-                <Popconfirm title="Bloquear teclado e mouse deste dispositivo?" onConfirm={async () => {
-                  try { await sendCommand(deviceId, 'block_input', {}); message.success('Teclado e mouse bloqueados'); } catch { message.error('Erro ao bloquear'); }
+                <Popconfirm title="Bloquear teclado e mouse?" onConfirm={async () => {
+                  try { await sendCommand(deviceId, 'block_input', {}); message.success('Bloqueados'); } catch { message.error('Erro'); }
                 }}>
-                  <Button danger style={{ borderColor: '#7C3AED', color: '#7C3AED' }}>Bloquear Teclado e Mouse</Button>
+                  <Button size="small" danger style={{ borderColor: '#7C3AED', color: '#7C3AED' }}>Block KB+Mouse</Button>
                 </Popconfirm>
                 <Popconfirm title="Desbloquear teclado e mouse?" onConfirm={async () => {
-                  try { await sendCommand(deviceId, 'unblock_input', {}); message.success('Teclado e mouse desbloqueados'); } catch { message.error('Erro ao desbloquear'); }
+                  try { await sendCommand(deviceId, 'unblock_input', {}); message.success('Desbloqueados'); } catch { message.error('Erro'); }
                 }}>
-                  <Button style={{ borderColor: '#00BFA5', color: '#00BFA5' }}>Desbloquear Teclado e Mouse</Button>
+                  <Button size="small" style={{ borderColor: '#00BFA5', color: '#00BFA5' }}>Unblock KB+Mouse</Button>
                 </Popconfirm>
-                <Popconfirm title="Bloquear portas USB (pendrives/armazenamento)?" onConfirm={async () => {
-                  try { await sendCommand(deviceId, 'block_usb', {}); message.success('Portas USB bloqueadas'); } catch { message.error('Erro ao bloquear USB'); }
+                <Popconfirm title="Bloquear portas USB?" onConfirm={async () => {
+                  try { await sendCommand(deviceId, 'block_usb', {}); message.success('USB bloqueadas'); } catch { message.error('Erro'); }
                 }}>
-                  <Button danger style={{ borderColor: '#FF4D4F', color: '#FF4D4F' }}>Bloquear USB</Button>
+                  <Button size="small" danger style={{ borderColor: '#FF4D4F', color: '#FF4D4F' }}>Block USB</Button>
                 </Popconfirm>
                 <Popconfirm title="Desbloquear portas USB?" onConfirm={async () => {
-                  try { await sendCommand(deviceId, 'unblock_usb', {}); message.success('Portas USB desbloqueadas'); } catch { message.error('Erro ao desbloquear USB'); }
+                  try { await sendCommand(deviceId, 'unblock_usb', {}); message.success('USB desbloqueadas'); } catch { message.error('Erro'); }
                 }}>
-                  <Button style={{ borderColor: '#0EA5E9', color: '#0EA5E9' }}>Desbloquear USB</Button>
+                  <Button size="small" style={{ borderColor: '#0EA5E9', color: '#0EA5E9' }}>Unblock USB</Button>
                 </Popconfirm>
                 {user?.role === 'admin' && (
                   <Popconfirm title="Remover dispositivo?" onConfirm={handleDelete}>
-                    <Button icon={<DeleteOutlined />} danger>Remover</Button>
+                    <Button size="small" icon={<DeleteOutlined />} danger>Remover</Button>
                   </Popconfirm>
                 )}
               </Space>
             )}
           </Col>
-        </Row>
 
-        <Descriptions column={4} size="small" style={{ marginTop: 16 }}>
-          <Descriptions.Item label="Agent ID">{device.agent_id}</Descriptions.Item>
-          <Descriptions.Item label="Usuário">{device.current_user || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Domínio">{device.domain || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Última Comunicação">
-            {device.last_seen ? new Date(device.last_seen).toLocaleString('pt-BR') : '-'}
-          </Descriptions.Item>
-        </Descriptions>
+          {/* ── Coluna direita: QR Code (URL do dispositivo) ── */}
+          <Col flex={isMobile ? '100%' : '140px'} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, borderLeft: isMobile ? 'none' : '1px solid var(--border)', borderTop: isMobile ? '1px solid var(--border)' : 'none', paddingLeft: isMobile ? 0 : 20, paddingTop: isMobile ? 12 : 0 }}>
+            <QRCodeSVG
+              value={`${window.location.origin}/devices/${deviceId}`}
+              size={128}
+              level="M"
+              marginSize={1}
+            />
+            <Text style={{ color: 'var(--text-secondary)', fontSize: 10, textAlign: 'center' }}>
+              {device.hostname}
+            </Text>
+            <Text style={{ color: 'var(--text-muted)', fontSize: 9, textAlign: 'center', wordBreak: 'break-all' }}>
+              {window.location.origin}/devices/{deviceId}
+            </Text>
+          </Col>
+        </Row>
       </Card>
 
       <Card style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12 }}>
@@ -544,6 +599,7 @@ export default function DeviceDetailPage() {
           options={rooms.map((r) => ({ value: r.id, label: r.full_path }))}
         />
       </Modal>
+
     </div>
   );
 }

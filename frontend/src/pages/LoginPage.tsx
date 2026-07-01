@@ -1,15 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Form, Input, Button, Typography, message, Space } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { Card, Form, Input, Button, Typography, message, Space, Tooltip } from 'antd';
+import { UserOutlined, LockOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
+import { useThemeStore } from '../store/themeStore';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [version, setVersion] = useState('');
   const { login } = useAuthStore();
+  const { mode, toggle } = useThemeStore();
   const navigate = useNavigate();
+  const isDark = mode === 'dark';
+
+  useEffect(() => {
+    fetch('/api/health').then(r => r.json()).then(d => setVersion(d.version || '')).catch(() => {});
+  }, []);
 
   const onFinish = async (values: { username: string; password: string }) => {
     setLoading(true);
@@ -24,26 +32,52 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
+    <div className={isDark ? 'login-starfield' : undefined} style={{
       minHeight: '100vh',
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0D0D0D 0%, #1A1A1A 50%, #0D0D0D 100%)',
+      position: 'relative',
+      overflow: 'hidden',
+      background: isDark
+        ? undefined
+        : 'linear-gradient(135deg, #f0f2f5 0%, #ffffff 50%, #f0f2f5 100%)',
     }}>
+      {isDark && (
+        <>
+          <div className="login-stars" />
+          <div className="login-shooting-star" style={{ top: '20%', left: '-100px', animationDelay: '0s' }} />
+          <div className="login-shooting-star" style={{ top: '35%', left: '-100px', animationDelay: '1.3s' }} />
+          <div className="login-shooting-star" style={{ top: '50%', left: '-100px', animationDelay: '2.6s' }} />
+        </>
+      )}
+
+      <Tooltip title={isDark ? 'Tema Claro' : 'Tema Escuro'}>
+        <Button
+          type="text"
+          icon={isDark ? <SunOutlined /> : <MoonOutlined />}
+          onClick={toggle}
+          style={{ position: 'absolute', top: 24, right: 24, color: isDark ? '#8896A6' : 'var(--text-muted)', fontSize: 20, zIndex: 1 }}
+        />
+      </Tooltip>
+
       <Card
         style={{
           width: 440,
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border)',
+          position: 'relative',
+          zIndex: 1,
+          background: isDark ? 'rgba(20, 22, 45, 0.55)' : 'var(--bg-card)',
+          backdropFilter: isDark ? 'blur(8px)' : undefined,
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid var(--border)',
           borderRadius: 16,
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          boxShadow: isDark ? '0 8px 32px rgba(0, 0, 0, 0.6)' : '0 8px 32px rgba(0, 0, 0, 0.4)',
         }}
         styles={{ body: { padding: 48 } }}
       >
         <Space direction="vertical" align="center" style={{ width: '100%', marginBottom: 36 }}>
-          <img src="/logo.png" alt="SixID" style={{ height: 56, objectFit: 'contain', marginBottom: 8 }} />
-          <Text style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+          <img src={isDark ? '/temaescuro.png' : '/logo.png'} alt="SixID" style={{ height: 56, objectFit: 'contain', marginBottom: 8 }} />
+          <Text style={{ color: isDark ? '#8896A6' : 'var(--text-secondary)', fontSize: 13 }}>
             Sistema de Gestão de Ativos e Inventário de TI
           </Text>
         </Space>
@@ -81,11 +115,11 @@ export default function LoginPage() {
             </Button>
           </Form.Item>
         </Form>
-
-        <Text style={{ display: 'block', textAlign: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
-          Usuário padrão: admin / admin123
-        </Text>
       </Card>
+
+      <Text style={{ marginTop: 24, fontSize: 11, color: isDark ? '#8896A6' : 'var(--text-secondary)', position: 'relative', zIndex: 1 }}>
+        SixID {version ? `v${version}` : ''} — Sistema de Gestão de Ativos e Inventário de TI
+      </Text>
     </div>
   );
 }

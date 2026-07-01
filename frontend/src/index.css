@@ -69,3 +69,212 @@ body {
 .ant-tabs .ant-tabs-tab {
   font-family: 'Poppins', sans-serif !important;
 }
+
+/* Login starfield background (dark theme only) */
+.login-starfield {
+  background: linear-gradient(to bottom, #0b0b2b, #1b2735 70%, #090a0f);
+}
+
+.login-stars,
+.login-stars::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  background: transparent;
+  box-shadow: 2% 5% 2px white, 10% 8% 2px white, 15% 15% 1px white,
+    22% 22% 1px white, 28% 12% 2px white, 32% 32% 1px white,
+    38% 18% 2px white, 42% 35% 1px white, 48% 25% 2px white,
+    53% 42% 1px white, 58% 15% 2px white, 63% 38% 1px white,
+    68% 28% 2px white, 73% 45% 1px white, 78% 32% 2px white,
+    83% 48% 1px white, 88% 20% 2px white, 93% 52% 1px white,
+    98% 35% 2px white, 5% 60% 1px white, 12% 65% 2px white,
+    18% 72% 1px white, 25% 78% 2px white, 30% 85% 1px white,
+    35% 68% 2px white, 40% 82% 1px white, 45% 92% 2px white,
+    50% 75% 1px white, 55% 88% 2px white, 60% 95% 1px white,
+    65% 72% 2px white, 70% 85% 1px white, 75% 78% 2px white,
+    80% 92% 1px white, 85% 82% 2px white, 90% 88% 1px white,
+    95% 75% 2px white;
+  animation: sixid-twinkle 8s infinite linear;
+}
+
+.login-stars::after {
+  animation: sixid-twinkle 6s infinite linear reverse;
+  box-shadow: 8% 12% 2px white, 16% 18% 1px white, 24% 25% 2px white,
+    33% 15% 1px white, 41% 28% 2px white, 49% 35% 1px white,
+    57% 22% 2px white, 65% 42% 1px white, 73% 28% 2px white,
+    81% 48% 1px white, 89% 32% 2px white, 97% 45% 1px white,
+    3% 68% 2px white, 11% 75% 1px white, 19% 82% 2px white,
+    27% 88% 1px white, 35% 72% 2px white, 43% 85% 1px white,
+    51% 92% 2px white, 59% 78% 1px white;
+}
+
+.login-shooting-star {
+  position: absolute;
+  width: 100px;
+  height: 2px;
+  background: linear-gradient(90deg, white, transparent);
+  animation: sixid-shoot 4s infinite ease-in;
+}
+
+@keyframes sixid-twinkle {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes sixid-shoot {
+  0% { transform: translateX(0) translateY(0) rotate(25deg); opacity: 1; }
+  100% { transform: translateX(120vw) translateY(50vh) rotate(25deg); opacity: 0; }
+}
+
+/* Dashboard resizable grid */
+.react-grid-item.react-grid-placeholder {
+  background: #1565FF !important;
+  opacity: 0.15 !important;
+  border-radius: 12px;
+}
+
+/* Todos os handles de resize */
+.react-grid-item > .react-resizable-handle {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.react-grid-item:hover > .react-resizable-handle {
+  opacity: 0.5;
+}
+
+.react-grid-item > .react-resizable-handle:hover,
+.react-grid-item > .react-resizable-handle:active {
+  opacity: 1;
+}
+
+/* Handle sudeste (canto) */
+.react-grid-item > .react-resizable-handle-se {
+  width: 16px;
+  height: 16px;
+  bottom: 4px;
+  right: 4px;
+  cursor: se-resize;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%231565FF' d='M11 5h2v2h-2zm0 4h2v2h-2zM7 9h2v2H7zm4 4h2v2h-2zM7 13h2v2H7zM3 13h2v2H3z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 14px;
+}
+
+/* Handle sul (borda inferior) */
+.react-grid-item > .react-resizable-handle-s {
+  height: 6px;
+  bottom: 0;
+  left: 20%;
+  width: 60%;
+  cursor: s-resize;
+  background: linear-gradient(transparent, rgba(21,101,255,0.3));
+  border-radius: 0 0 4px 4px;
+}
+
+/* Handle leste (borda direita) */
+.react-grid-item > .react-resizable-handle-e {
+  width: 6px;
+  right: 0;
+  top: 20%;
+  height: 60%;
+  cursor: e-resize;
+  background: linear-gradient(to right, transparent, rgba(21,101,255,0.3));
+  border-radius: 0 4px 4px 0;
+}
+
+.react-grid-item.resizing {
+  z-index: 12;
+  opacity: 0.92;
+  box-shadow: 0 8px 32px rgba(21,101,255,0.18);
+}
+
+.react-grid-item.react-draggable-dragging {
+  z-index: 12;
+  opacity: 0.92;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+
+/* Fullscreen dashboard */
+:fullscreen {
+  background: var(--bg) !important;
+  overflow: auto !important;
+}
+:-webkit-full-screen {
+  background: var(--bg) !important;
+  overflow: auto !important;
+}
+:-moz-full-screen {
+  background: var(--bg) !important;
+  overflow: auto !important;
+}
+
+/* ══════════════ Responsivo — Mobile & Tablet ══════════════ */
+@media (max-width: 576px) {
+  /* Título de página */
+  .ant-typography h1, .ant-typography h2, .ant-typography h3 {
+    font-size: 1.1rem !important;
+  }
+
+  /* Cards com padding compacto */
+  .ant-card-body {
+    padding: 12px !important;
+  }
+  .ant-card-head {
+    padding: 0 12px !important;
+    min-height: 42px !important;
+  }
+
+  /* Tabs scroll horizontal */
+  .ant-tabs-nav-wrap {
+    overflow-x: auto !important;
+  }
+
+  /* Estatísticas menores */
+  .ant-statistic-content-value {
+    font-size: 18px !important;
+  }
+
+  /* Botões de ação — melhor toque */
+  .ant-btn {
+    min-height: 36px;
+  }
+
+  /* Segmented compacto */
+  .ant-segmented {
+    font-size: 12px !important;
+  }
+
+  /* Modais full-width no mobile */
+  .ant-modal {
+    max-width: 100vw !important;
+    margin: 0 !important;
+    top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  .ant-modal-content {
+    border-radius: 0 !important;
+    min-height: 100dvh;
+  }
+
+  /* Table: fonte menor */
+  .ant-table-cell {
+    font-size: 12px !important;
+    padding: 6px 8px !important;
+  }
+
+  /* Space wrap mais compacto */
+  .ant-space-item {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 992px) {
+  /* Margem do conteúdo */
+  .ant-layout-content {
+    overflow-x: hidden;
+  }
+}

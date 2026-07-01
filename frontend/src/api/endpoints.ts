@@ -164,3 +164,14 @@ export const restockToner = (data: { toner_model: string; quantity: number; note
 export const getStockLogs = (params?: Record<string, any>) =>
   api.get<any[]>('/printers/stock/logs', { params });
 export const exportTonerLogs = () => '/printers/stock/export';
+
+// Printer Tickets
+export const getTickets = (params?: { printer_id?: number; status?: string }) =>
+  api.get<any[]>('/printers/tickets', { params });
+export const createTicket = (printerId: number, data: { opened_by: string; description: string }) =>
+  api.post<any>(`/printers/${printerId}/tickets`, data);
+export const updateTicket = (ticketId: number, data: { status?: string; resolution?: string; closed_by?: string }) =>
+  api.put<any>(`/printers/tickets/${ticketId}`, data);
+export const deleteTicket = (ticketId: number) =>
+  api.delete(`/printers/tickets/${ticketId}`);
+export const exportTickets = () => '/printers/tickets/export';
